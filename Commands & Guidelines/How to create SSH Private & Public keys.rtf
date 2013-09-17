@@ -1,0 +1,36 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf370
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset0 Tahoma;}
+{\colortbl;\red255\green255\blue255;\red210\green50\blue18;}
+\margl1440\margr1440\vieww16200\viewh12200\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\f0\b\fs24 \cf0 How to create 
+\f1\fs28 Private & Public keys\
+\pard\pardeftab720\sa100
+\cf0 id_rsa vs id_rsa.pub\
+\pard\pardeftab720\sl300
+
+\b0\fs26 \cf0 \
+To create the keys:\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\pardirnatural
+
+\f0\fs24 \cf0 login lxplus5\
+ssh-keygen [creates keys]\
+/afs/cern.ch/project/cvs/dist/bin/set_ssh [sets the ssh necessary links]\
+
+\f1\fs26 \
+\pard\pardeftab720\sl300
+\cf0 With ssh keys, ssh-keygen creates two files: id_rsa and id_rsa.pub.\
+\
+They're a key pair: id_rsa is your private key -- it should be kept secret, so that only you can use it; and id_rsa.pub is your public key -- you give it out so that others can verify that a given signature came from your private key. Your private key is used to sign things, and your public key is used to verify your signature.\
+\
+In terms of authorized_keys and ssh, they're used like this:\
+\
+1. Whoever owns the box appends the contents of your public key (id_rsa.pub) to ~/.ssh/authorized keys. This tells ssh, "if you get a request that is signed by the private key corresponding to this public key, let that request log in without a password".\
+\
+2. You then initiate an ssh connection to that machine as the user whose authorized_keys contains your public key. You won't be prompted for a password, because your request will be automatically signed using your private key. ssh uses your public key to verify that the signature is valid, and allows you to log in.\
+\
+You can refer to: \
+* {\field{\*\fldinst{HYPERLINK "http://en.wikipedia.org/wiki/Public-key_cryptography"}}{\fldrslt http://en.wikipedia.org/wiki/Public-key_cryptography}}\
+* {\field{\*\fldinst{HYPERLINK "https://help.ubuntu.com/community/SSH/OpenSSH/Keys"}}{\fldrslt \cf2 https://help.ubuntu.com/community/SSH/OpenSSH/Keys}}\cf2 \
+* {\field{\*\fldinst{HYPERLINK "http://www.noah.org/wiki/SSH_public_keys"}}{\fldrslt http://www.noah.org/wiki/SSH_public_keys}}}

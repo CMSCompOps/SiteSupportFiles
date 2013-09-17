@@ -1,0 +1,37 @@
+- We start at the Frontier monitoring home page frontier.cern.ch
+- We want to use AWStats to view traffic stats of the CERN Launchpads, which are the first line of data distribution. So, go to 
+"Detailed statistics for central servers (awstats)" in the CMS Offline section.
+- Since traffic is on average equally distributed among the Launchpads, choose "cmsfrontier (full production)" the time option relevant to your debugging. In this case, choose "this month".
+- AWStats presents the traffic data in several useful ways. One of them, named "Hosts", ranks sites (actually host names based at the sites) based on the amount of data transferred and the number of queries to the Frontier system. We want to analyze the traffic from the site that registers the highest amount of data transferred, as a first measure before caring for the number of queries ("pages" as labeled by AWStats). 
+   ! Mind the CMS T0 frontier machines (currently vocms02/03), as they usually are the sources of the highest amount of data traffic. This is normal, so go for the next host name located outside CERN.
+   - For this case, we want to analyze 'cmshead.mps.ohio-state.edu'.
+- All traffic served by the Frontier servlets in the Launchpads is recorded in /data/tomcat_logs/catalina.out for the current day, and there are gzip-compressed versions of the previous days in the same path. Important details of the catalina.out log:
+   * Every line represents an event during the servicing of a query.
+   * All queries are assigned an individual 'id', which appears in each and every event line, allowing for tracing of any query. 
+   * The first record has the form:
+      servlet_name timestamp id servlet_version "start" thread_number query_data client_data forwarding_data
+   Example:
+      FrontierPrep 08/05/13 19:34:35.622 CEST +0200 id=293476 servlet_version:3.30 start threads:1 query /type=frontier_request:1:DEFAULT&encoding=BLOBzip5&p1=<very_long_string_encoding_the_query> raddr 127.0.0.1 frontier-id: CMSSW_5_3_8_patch1 2.8.5 5258 puigh(524) Darren Puigh via: 1.0 vocms213.cern.ch:8000 (squid/frontier-squid-2.7.STABLE9-16.1) x-forwarded-for: 128.146.38.254
+- We will filter the queries by the origin, using the info contained in the forwarding data of the start lines. Since the forwarding data records an IPv4 address, we need to get the address of our target host name:
+   >> $ host cmshead.mps.ohio-state.edu
+      cmshead.mps.ohio-state.edu has address 128.146.38.254
+- So we filter the catalina.out log to all lines that contain such IP address. Let's say we want to work on the log of 2 days ago:
+   >> $ zgrep 128.146.38.254 catalina.out.2.gz > drill-starts
+- So the file 'drill-starts' contains the first line of all recorded queries proceeding from 'cmshead.mps.ohio-state.edu'. Now we want to recover all the event information of all those queries. Since we also have the id numbers, we will filter the catalina.out log by those id's. This requires a bit of text manipulation:
+   >> $ grepstr=$(cut -d\  -f 6 drill-starts | sort -uz | tr -d '\0' | sed ':a;N;$!ba;s/\n/\\|/g')
+      $ zgrep "$grepstr" catalina.out.2.gz > drill-records
+- 'drill-records' now contains all the events up to the end of all queries from 'cmshead.mps.ohio-state.edu'. At this point it is worth looking at it directly to get a better feeling of its structure. After that, we can analyze it. Things that are worth analyzing in it are:
+   - Servlets used (and how many queries per servlet):
+      >> $ cut -d\  -f1 drill-records | sort | uniq -c
+         1326 FrontierPrep
+         1054 FrontierProd
+   - Query execution times ranking (the less msecs, the better):
+      >> $ $ grep 'stop threads=' drill-records | cut -d\  -f 9 | sort | uniq -c | sort -n
+         73 msecs=2
+         63 msecs=1
+         ...
+   - The actual, decoded queries, by using a tool that as of now is still under development:
+      >> $ cat drill-starts | ~llinares/public/utility/decodefrontierreqs | less
+      (In less, look for "Query Statistics", and the number at the begginning of each line counts the number of times that particular query was issued)
+
+Have fun debugging!

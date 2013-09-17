@@ -1,0 +1,97 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf370
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset0 LucidaGrande;}
+{\colortbl;\red255\green255\blue255;\red102\green55\blue9;}
+\margl1440\margr1440\vieww12300\viewh17080\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\f0\i\b\fs24 \cf0 Commands for Frontier
+\i0\b0 \
+\
+1. log in lxplus\
+2. ssh cmsfrontier3 o 2 [redirects to one of the machines that has frontier-squid  and frontier-servlet (tomcat)]\
+o\
+1 ssh frontier1.cern.ch (directo desde latbook15)\
+\
+3. 
+\f1\fs26 sudo -u dbfrontier -i bash (run as a frontier user)\
+4. folder /data [contiene logs]\
+\
+servlet frontierProd (uno de los principales en Frontier, el mas grande) \
+log outputs to catalina.out\
+\pard\pardeftab720
+\cf0 less /data/tomcat_logs/catalina.out\
+grep FrontierProd \'a0/data/tomcat_logs/catalina.out | less\
+\
+para hacer b\'fasquedas dentro de less (/) (n for next finding) (shift+n for previous)\
+/ threads=[0-9][0-9][0-9]*\
+normally few msec, longer msec = problem, investigate further based on its id#\
+\
+/id=xxx\
+look for all history for a specific id (query)\
+the first line for that id, where it says start, shows all the info regarding that specific query\
+\
+{\field{\*\fldinst{HYPERLINK "http://frontier.cern.ch/squidstats/frontier_inst_maxthreads.cms.html"}}{\fldrslt http://frontier.cern.ch/squidstats/frontier_inst_maxthreads.cms.html}}\
+monitor for frontier\
+reads from catalina.out\
+\
+{\field{\*\fldinst{HYPERLINK "http://frontier.cern.ch/awstats/awstats.pl?config=cmsfrontier2&databasebreak=day&day=24"}}{\fldrslt http://frontier.cern.ch/awstats/awstats.pl?config=cmsfrontier2&databasebreak=day&day=24}}\
+a site shouldn't have more than 2-5 GB bandwidth requests to Frontier\
+if a site has more than that --> start checking in Log\
+\
+first look for the ip address of the site:\
+for example: host nat024.rcac.purdue.edu\
+get the address\
+do a grep [ipaddress] /data/tomcat_logs/catalina.out | less\
+\
+Once the specific query that is generating to many requests to Frontier is identified\
+tell the corresponding people to act upon it:\
+workflow leaders, Oliver or Christoph\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720
+
+\f0\fs24 \cf0 grep 128.211.155.24 /data/tomcat_logs/catalina.out |awk -F 'frontier-id: ' '\{print $2\}' |cut -d' ' -f1,1 |sort |uniq -c |sort -nr |head\
+para organizar mejor y resumir la respuesta\
+\
+\
+Machines\
+--------------\
+\pard\pardeftab720
+\cf0 cmsfrontier -- launchpad - sirven los datos\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720
+\cf0 frontier - monitoreo\
+\pard\pardeftab720
+\cf0 launchpad machines\
+cmsfrontier1 -> vocms213\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardeftab720\pardirnatural
+\cf0 cmsfrontier2 -> vocms126\
+\pard\pardeftab720
+\cf0 vocms213, vocms126, vocms221, vocms201\
+\
+cmsfrontier[1-3]\
+cmsfrontier.cern.ch has address 128.142.151.83\
+cmsfrontier.cern.ch has address 137.138.162.168\
+cmsfrontier.cern.ch has address 128.142.133.55\
+\
+monitoring machines: \
+vocms166 (frontier1), vocms177 (frontier2), vocms168 (wlcgsquidmon1), vocms179 (wlcgsquidmon2)\
+\
+when physical problems and under revision from Cern IT:\
+\pard\pardeftab720
+{\field{\*\fldinst{HYPERLINK "http://itssb.web.cern.ch/service-incidents"}}{\fldrslt \cf0 http://itssb.web.cern.ch/service-incidents}}\
+(look for hypervisor)\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720
+\cf0 \
+Logs\
+---------\
+tailf /data/squid_logs/cache.log [para ver en tiempo real lo que hace el squid para preparar el acceso - stop and start]\
+\pard\pardeftab720\sl400
+\cf0 /data/squid_logs/access.log [log de lo que hace el quid una vez iniciado]\
+\
+Start/Stop machines\
+-------------------------\
+\pard\pardeftab720\sl400
+\cf2 sudo /etc/init.d/frontier-squid stop; sudo /etc/init.d/frontier-tomcat start\
+\pard\pardeftab720
+\cf0 sudo /sbin/service frontier-squid stop; sudo /sbin/service frontier-squid start\
+\pard\pardeftab720
+{\field{\*\fldinst{HYPERLINK "https://twiki.cern.ch/twiki/bin/view/CMS/FrontierOpsStoppingStarting"}}{\fldrslt \cf0 https://twiki.cern.ch/twiki/bin/view/CMS/FrontierOpsStoppingStarting}}}

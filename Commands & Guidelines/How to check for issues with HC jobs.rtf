@@ -1,0 +1,106 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf370
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fswiss\fcharset0 ArialMT;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww12300\viewh17080\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\f0\b\fs28 \cf0 \ul \ulc0 How to check for issues with HC jobs
+\b0\fs24 \ulnone \
+\
+this is how HC jobs are generated and sent to sites:\
+[HC crab machine (vocms06)] ===ssh tunnel===> [HC submitter (vocms228)] ==> \{Frontend / Factories / Sites\}\
+\
+HC crab machine: 	runs the crab instance and generates the jobs. \
+			It creates an ssh tunnel to HC submitter\
+			sends jobs to HC submitter\
+HC submitter:	runs an schedd\
+			creates the condor queu\
+			contacts the frontend\
+			jobs are matched to the pilots that the factories run\
+\
+for more info about glideinWMS and condor:\
+{\field{\*\fldinst{HYPERLINK "https://twiki.cern.ch/twiki/bin/view/CMSPublic/GlideinWMSMonitoring"}}{\fldrslt https://twiki.cern.ch/twiki/bin/view/CMSPublic/GlideinWMSMonitoring}}\
+	\
+											\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\b \cf0 \ul 1. start checking the submitter (vocms228)
+\b0 \ulnone \
+
+\f1\fs28 * soon the way to check for this will be through a plot in dashboard\
+\
+login to lxplus5\
+in lxplus5 login to vocms228 (this is the submitter)\
+\pard\tx720\tx1440\tx1933\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardeftab720\sl400
+\cf0 ps xau [to check for all the processes]\
+it will show all the "condor shadow" processes with the user "_condor"\
+this means that the jobs have been matched to a pilot\
+\
+the processes are run under a specific [user] in this case "_condor"\
+to change to the specific user \
+sudo -u [user] /bin/bashs\
+\
+the submitter machine (vocms228), to be able to submit the jobs through condor needs certificate permissions.\
+The certificate for the machine is stored in /etc/grid-security/\
+hostcert.pem\
+hostkey.pem\
+but those are accessed only by root\
+\
+In order for "_condor" to be able to use the certificate it was 
+\b copied
+\b0  (both files) to a location that the user can access: /home/condor/.globus\
+So every time the certificate is renew for this machine (vocms228) the new certificate needs to be copied to the mentioned location, otherwise condor submission will fail.\
+\ul \
+to check if condor is running\ulnone \
+first need to source the environment\
+source /data/srv/condor/current/condor.sh\
+\
+condor_q \
+it will show how many jobs are idle and how many running\
+\
+|symptom| probable cause|\
+| 0 running & 0 pending | HC crab machine (vocms06) is not submitting jobs - ssh tunnel could be broken (it has happened before)|\
+| 0 running & many pending| submitter machine (vocms228) is not matching the jobs to the pilots - look into logs |\
+\
+\ul to check condor logs\
+\ulnone condor logs are kept here:\
+/data/srv/condor/current/condor_local/log\
+\
+there are many logs in here and could be difficult to find the errors.\
+so one suggestion is to look for the latest updated log and the last few lines:\
+ls -latr\
+tail -20 [name of the log]\
+The output will provide a good idea of the latest errors.\
+\
+
+\b \ul 2. if the submitter is fine, check the HC crab machine (vocms06)\
+
+\b0 \ulnone \
+- Log to the desired HC box (vocms06) as gangarbt\
+\pard\pardeftab720
+
+\f0\fs24 \cf0 lxplus5\
+ssh gangarbt@vocms06\
+\
+PW:\
+Vonnach7
+\f1\fs28 \
+\pard\tx720\tx1440\tx1933\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardeftab720\sl400
+\cf0 \
+- Source the environment by doing\
+\
+$ source /data/hc/external/cms/crab/scripts/CMSSW_generic.sh CMSSW_5_3_1 CRAB_2_8_8\
+\
+(change versions as needed)\
+\
+- Write a crab.cfg (e.g. copied from an existing test) in a temporary directory\
+\
+- Change the activity name to something appropriate (e.g. 'test')\
+\
+- Set to run on the desired site/CE\
+\
+- Point to the desired proxy, e.g.:\
+\
+$ export X509_USER_PROXY=/data/hc/apps/cms/config/x509up_user2\
+\
+- Run the desired crab commands}
