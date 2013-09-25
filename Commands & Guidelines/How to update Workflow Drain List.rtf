@@ -7,7 +7,16 @@
 \f0\fs28 \cf0 How to update Workflow Drain List\
 \
 \pard\tx720\tx1440\tx1933\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardeftab720\sl400
-\cf0 * update drain list in excel file\
+\cf0 * copy previous file and check for changes with github\
+vocms235\
+sudo -u cmst1 /bin/bashs\
+scp ~cmst1/www/site-limits.conf jartieda@lxplus5.cern.ch:~/\
+[exit to latbook15]\
+* from latbook15\
+scp jartieda@lxplus5.cern.ch:~/site-limits.conf /Users/artiedaj/Dropbox/Public/CMS/SiteSupportFiles/ \
+[folder controlled by git - github checks changes in files in this folder]\
+\
+* update drain list in excel file\
 \pard\tx720\tx1440\tx1933\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardeftab720
 \cf2 Save as csv (select field delimited \{space\})\
 Open it in TextEdit\
@@ -17,7 +26,7 @@ Open it in TextEdit\
 \cf0 \
 \pard\tx720\tx1440\tx1933\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardeftab720\sl400
 \cf0 * from latbook15\
-scp /Users/artiedaj/Dropbox/Public/CMS/SiteSupportMeeting/site-limits.conf jartieda@lxplus5.cern.ch:\
+scp /Users/artiedaj/Dropbox/Public/CMS/SiteSupportFiles/site-limits.conf jartieda@lxplus5.cern.ch:\
 \
 * from cmst1@vocms235\
 vocms235\
@@ -25,4 +34,16 @@ sudo -u cmst1 /bin/bashs\
 scp jartieda@lxplus5.cern.ch:~/site-limits.conf ~cmst1/www/\
 less ~cmst1/www/site-limits.conf\
 \
-* update git repository located in github}
+* update git repository located in github\
+/Users/artiedaj/Dropbox/Public/CMS/SiteSupportFiles/ \
+[folder controlled by git - github app checks changes in files in this folder]\
+\
+SSH clone url for repository:\
+git@github.com:CMSCompOps/SiteSupportFiles.git\
+HTTPS clone url:\
+https://github.com/CMSCompOps/SiteSupportFiles.git\
+\
+Open github app\
+check changes in files\
+write description of commit\
+press "commit and sync" button [it commits changes, pushes them to github and updates local repositories with latest changes from github]}
