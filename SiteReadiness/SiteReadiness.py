@@ -478,10 +478,6 @@ def GetDailyMetricStatus(sites, SiteCommMatrix, MatrixStatusColors):
 						if validity>SiteCommMatrix[sitename][dayloopstamp3][col]['validity']:
 							SiteCommMatrix[sitename][dayloopstamp3][col]=infocol
 					else:
-						# HERE
-#						print sitename,dayloopstamp3,col
-#						print infocol
-#						print "----------------------------------------------------------------------------------------"
 						SiteCommMatrix[sitename][dayloopstamp3][col]=infocol	
 								
 					if dayloopstamp == todaystamp:
@@ -497,14 +493,6 @@ def GetDailyMetricStatus(sites, SiteCommMatrix, MatrixStatusColors):
 
 
 def FilterSitesInTablesPlots(sitename, matrix=[], matrixgl=[], printAllSortsOfStuff=False):
-	# HERE
-#	if printAllSortsOfStuff:
-#		print "sitename: ",sitename,"yesterdaystamp: ",yesterdaystamp
-#		print matrix[sitename][yesterdaystamp]
-#		print "----------------------------------------------------------------------------------------"
-##		sys.exit()
-#	if not matrix[sitename][yesterdaystamp].has_key('IsSiteInSiteDB'): return 0
-#	if matrix[sitename][yesterdaystamp]['IsSiteInSiteDB']['Color'] == 'white': return 0
 		
 	if sitename.find("T0_CH_CERN") == 0 : return 0
 	if sitename.find("T1_DE_FZK") == 0 : return 0
@@ -547,10 +535,6 @@ def SSBXMLParser(sites, ColumnMatrix):
 
 		fileN=pathN+"/"+col+".xml"
 
-		# HERE
-#		if col != "IsSiteInSiteDB":
-#			print "\nskipping",col
-#			continue
 		if GetURLs == True:
 			print "Column %s - Getting the url %s" % (col, url)
 			os.system("curl -s -H 'Accept: text/xml'  '%s' > %s" % (url,fileN))
@@ -970,7 +954,6 @@ def EvaluateSiteReadiness(SiteCommMatrixT1T2, SiteCommGlobalMatrix):
 				colorst="brown"
 		
 			SiteCommGlobalMatrix[sitename][dayloopstamp] = status
-			# HERE
 
 		if ( tier == "T2" or tier == "T3") :
 
@@ -1104,7 +1087,6 @@ def ProduceSiteReadinessHTMLViews(SiteCommGlobalMatrix, metorder, metlegends, co
 		sys.stdout.write(str(prog)+'\r')
 		sys.stdout.flush()
 
-		# HERE
 		if FilterSitesInTablesPlots(sitename, SiteCommMatrix, SiteCommGlobalMatrix, True) : 
 #		if True:
 
