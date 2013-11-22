@@ -1,5 +1,6 @@
 logdir=`date +%m/%d`
 webdir=$HOME/www/readiness
 mkdir -p $webdir $logdir
-./SiteReadiness.py -p $webdir -c DailyMetricsCorrections.txt -u http://cern.ch/test-readiness -x true
-./UsableSites.py  -p /tmp/usable -u http://lhcweb.cern.xch/cms
+#./SiteReadiness.py -p $webdir -u http://cern.ch/test-readiness -x true
+./SiteReadiness.py -p $webdir -u $HOME/www -x false
+#./UsableSites.py  -p /tmp/$USER/usable -u http://lhcweb.cern.xch/cms

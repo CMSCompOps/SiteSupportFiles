@@ -12,8 +12,7 @@
 # https://twiki.cern.ch/twiki/bin/view/CMS/PADASiteCommissioning
 # ------------------------------------------------------------
 
-
-import sys, xml.dom.minidom, os, datetime, time, pprint, csv, pickle
+import sys, xml.dom.minidom, os, datetime, time, pprint, csv, pickle, string
 from xml import xpath
 from datetime import date
 
@@ -25,25 +24,23 @@ from pylab import *
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.cm as cm
-
-# OptParse
 from optparse import OptionParser
+from ColumnInfo import ColumnInfo
+from ProgressBar import ProgressBar
 
-
-usage = "usage: (example) %prog -p /home/jflix/tmp2 -c /home/jflix/MetricsCorrections.txt -u http://lhcweb.pic.es/cms -x true/false"
+#----------------------------------------------------------------------------------------
+# options
+usage = "usage: (example) %prog -p /home/jflix/tmp2 -u http://lhcweb.pic.es/cms -x true/false"
 parser = OptionParser(usage=usage, version="%prog 1.0")
 parser.add_option("-p", "--path_out", dest="path_out", help="Sets the PATH to store the produced data", metavar="PATH")
-parser.add_option("-c", "--corr", dest="corr", help="Sets the ASCii file where the metrics corrections are provided", metavar="FILE")
 parser.add_option("-u", "--url", dest="url", help="Sets the base URL where produced data is accessible", metavar="URL")
 parser.add_option("-x", "--xml", dest="xml", help="Sets getting or not the XML files from SSB", metavar="BOOLEAN")
 (options, args) = parser.parse_args()
-
-if len(sys.argv) != 9:
+if len(sys.argv) != 7:
 	parser.error("incorrect number of arguments. Check needed arguments with --help")
 		
 
 todaydate = date.today()
-
 today=datetime.datetime.utcnow()
 todaystamp=today.strftime("%Y-%m-%d")
 todaystampfile=today.strftime("%Y-%m-%d %H:%M:%S")
@@ -55,10 +52,7 @@ yesterdaystamp=yesterday.strftime("%Y-%m-%d")
 yesterdaystampfileSSB=yesterday.strftime("%Y-%m-%d 00:00:01")
 timestamphtml=today.strftime("%Y%m%d")
 
-########################################################################################
-#
-
-basepath=os.path.split(sys.argv[0])[0]
+#basepath=os.path.split(sys.argv[0])[0]
 
 pathN=options.path_out + "/INPUTxmls"
 pathout= options.path_out + "/toSSB"
@@ -90,10 +84,6 @@ if not os.path.exists(pathN):
 if not os.path.exists(pathoutASCII):
 	os.makedirs(pathoutASCII)
 
-#Corrections for Daily metrics, badly inserted on the SSB
-DailyMetricsCorrected = options.corr
-
-fileSSB= pathout + '/SiteReadiness_SSBfeed.txt'
 fileDailyStat= pathoutASCII + '/Daily_HistoricStatistics.txt'
 fileReadinessStat= pathoutASCII + '/SiteReadiness_HistoricStatistics.txt'
 
@@ -102,233 +92,16 @@ reptime="Report made on %s (UTC)\n" % todaystampfile
 days=60  # Number of days to get the information from SSB -- We need these number of days to build the 30-plots view.
 daysshow=21  # Number of days to get the information from SSB
 dayssc=7  # Number of last days to build the Site Commissioning status
-hours=str(days*24)
 
 CountWeekendsT2=False
 
-#
-########################################################################################
-
-
-# URLs with SSB inputs --------------------------------------------------------------------------------------
-
-#webserver="http://dashb-ssb-dev.cern.ch"
-webserver="http://dashb-ssb.cern.ch"
-
-# Downtimes/Maintenances from SAM DB
-#Downtimes_sam= webserver + '/dashboard/request.py/getplotdata?columnid=71&batch=1&time=' + hours 
-#Downtimes_top = "http://dashb-cms-vo-feed.cern.ch/dashboard/request.py/getplotdata?columnid=121&batch=1&time=" + hours
-Downtimes_top = webserver + '/dashboard/request.py/getplotdata?columnid=121&batch=1&time=' + hours
-
-# Job Robot
-SiteCommJR= webserver + '/dashboard/request.py/getplotdata?columnid=27&batch=1&time=' + hours
-SiteCommJRDB= webserver + '/dashboard/request.py/getplotdata?columnid=119&batch=1&time=' + hours 
-
-# HammerCloud
-HammerCloud= webserver + '/dashboard/request.py/getplotdata?columnid=135&batch=1&time=' + hours
-
-# SAM availability
-# tmp SAMAvailability= webserver + '/dashboard/request.py/siteviewhistory?columnid=40&time=' + hours + "&fullstatus=1"
-SAMNagiosAvailability= webserver + '/dashboard/request.py/getplotdata?columnid=116&batch=1&time=' + hours
-SUMAvailability= webserver + '/dashboard/request.py/getplotdata?columnid=126&batch=1&time=' + hours
-
-# DDT-commissioned links
-T1linksfromT0= webserver + '/dashboard/request.py/getplotdata?columnid=33&batch=1&time=' + hours
-T1linkstoT2s= webserver + '/dashboard/request.py/getplotdata?columnid=34&batch=1&time=' + hours
-T1linksfromtoT1s= webserver + '/dashboard/request.py/getplotdata?columnid=35&batch=1&time=' + hours
-T2linkstoT1s= webserver + '/dashboard/request.py/getplotdata?columnid=36&batch=1&time=' + hours
-T2linksfromT1s= webserver + '/dashboard/request.py/getplotdata?columnid=37&batch=1&time=' + hours
-
-# Good links based on data transfer qualities
-GoodT1linksfromT0= webserver + '/dashboard/request.py/getplotdata?columnid=74&batch=1&time=' + hours
-GoodT1linksfromT1s= webserver + '/dashboard/request.py/getplotdata?columnid=75&batch=1&time=' + hours
-GoodT1linksfromT2s= webserver + '/dashboard/request.py/getplotdata?columnid=76&batch=1&time=' + hours
-GoodT1linkstoT1s= webserver + '/dashboard/request.py/getplotdata?columnid=77&batch=1&time=' + hours
-GoodT1linkstoT2s= webserver + '/dashboard/request.py/getplotdata?columnid=80&batch=1&time=' + hours
-GoodT2linksfromT1s= webserver + '/dashboard/request.py/getplotdata?columnid=78&batch=1&time=' + hours
-GoodT2linkstoT1s= webserver + '/dashboard/request.py/getplotdata?columnid=79&batch=1&time=' + hours
-
-# Is Site in SiteDB?
-IsSiteInSiteDB= webserver + '/dashboard/request.py/getplotdata?columnid=100&batch=1&time=' + hours
 IsSiteInSiteDB_validsince=date(2009,11,03)
 
-
-ColumnMatrix = {}  # SSB URLs Matrix
-#ColumnMatrix["Downtimes_sam"]=Downtimes_sam
-ColumnMatrix["Downtimes_top"]=Downtimes_top
-ColumnMatrix["JobRobot"]=SiteCommJR
-ColumnMatrix["JobRobotDB"]=SiteCommJRDB
-ColumnMatrix["HammerCloud"]=HammerCloud
-# tmp ColumnMatrix["SAMAvailability"]=SAMAvailability
-#ColumnMatrix["SAMNagiosAvailability"]=SAMNagiosAvailability
-ColumnMatrix["SUMAvailability"]=SUMAvailability
-ColumnMatrix["T1linksfromT0"]=T1linksfromT0
-ColumnMatrix["T1linkstoT2s"]=T1linkstoT2s
-ColumnMatrix["T1linksfromtoT1s"]=T1linksfromtoT1s
-ColumnMatrix["T2linksfromT1s"]=T2linksfromT1s
-ColumnMatrix["T2linkstoT1s"]=T2linkstoT1s
-ColumnMatrix["GoodT1linksfromT0"]=GoodT1linksfromT0
-ColumnMatrix["GoodT1linksfromT1s"]=GoodT1linksfromT1s
-ColumnMatrix["GoodT1linksfromT2s"]=GoodT1linksfromT2s
-ColumnMatrix["GoodT1linkstoT1s"]=GoodT1linkstoT1s
-ColumnMatrix["GoodT1linkstoT2s"]=GoodT1linkstoT2s
-ColumnMatrix["GoodT2linksfromT1s"]=GoodT2linksfromT1s
-ColumnMatrix["GoodT2linkstoT1s"]=GoodT2linkstoT1s
-ColumnMatrix["IsSiteInSiteDB"]=IsSiteInSiteDB
-
-# Add the color name <-> color index here
-MatrixStatusColors = {}  # SSB XML Status colors
-#MatrixStatusColors["Downtimes_sam"]={"4":"white", "5":"green", "6":"brown", "7":"yellow"}
-MatrixStatusColors["Downtimes_top"]={"1":"brown", "4":"yellow", "5":"green", "6":"grey", "8":"white"}
-MatrixStatusColors["JobRobot"]={"5":"green", "3":"red", "6":"white"}
-MatrixStatusColors["JobRobotDB"]={"5":"green", "3":"red", "6":"white"}
-MatrixStatusColors["HammerCloud"]={"5":"green", "3":"red", "6":"white", "8":"white"}
-# tmp MatrixStatusColors["SAMAvailability"]={"4":"green", "5":"red"}
-#MatrixStatusColors["SAMNagiosAvailability"]={"5":"green", "3":"red"}
-MatrixStatusColors["SUMAvailability"]={"5":"green", "3":"red"} #20120215: Seguro?
-MatrixStatusColors["T1linksfromT0"]={"5":"green", "3":"red"}
-MatrixStatusColors["T1linksfromtoT1s"]={"5":"green", "3":"red"}
-MatrixStatusColors["T1linkstoT2s"]={"5":"green", "3":"red"}
-MatrixStatusColors["T2linksfromT1s"]={"5":"green", "3":"red"}
-MatrixStatusColors["T2linkstoT1s"]={"5":"green", "3":"red"}
-MatrixStatusColors["GoodT1linksfromT0"]={"3":"red", "5":"green"}
-MatrixStatusColors["GoodT1linksfromT1s"]={"3":"red", "5":"green"}
-MatrixStatusColors["GoodT1linksfromT2s"]={"3":"red", "5":"green"}
-MatrixStatusColors["GoodT1linkstoT1s"]={"3":"red", "5":"green"}
-MatrixStatusColors["GoodT1linkstoT2s"]={"3":"red", "5":"green"}
-MatrixStatusColors["GoodT2linksfromT1s"]={"3":"red", "5":"green"}
-MatrixStatusColors["GoodT2linkstoT1s"]={"3":"red", "5":"green"}
-MatrixStatusColors["IsSiteInSiteDB"]={"5":"green"}
-
-criterias = { "T0": [ 'JobRobot',
-		      'JobRobotDB',
-		      'HammerCloud',
-		      'SAMNagiosAvailability',
-		      'SUMAvailability'],
-	      "T1": [ 'JobRobot',
-		      'JobRobotDB',
-		      'HammerCloud',
-		      'SAMNagiosAvailability',
-		      'SUMAvailability',
-		      'T1linksfromT0',
-		      'T1linksfromtoT1s',
-		      'T1linkstoT2s',
-		      'GoodT1linksfromT0',
-		      'GoodT1linksfromT1s',
-		      'GoodT1linksfromT2s',
-		      'GoodT1linkstoT1s',
-		      'GoodT1linkstoT2s'], 
-	      "T2": [ 'JobRobot',
-		      'JobRobotDB',
-		      'HammerCloud',
-		      'SAMNagiosAvailability',
-		      'SUMAvailability',
-		      'T2linksfromT1s',
-		      'T2linkstoT1s',
-		      'GoodT2linksfromT1s',
-		      'GoodT2linkstoT1s'],
-	      "T3": [ 'JobRobot',
-	              'JobRobotDB',
-		      'HammerCloud',
-		      'SAMNagiosAvailability',
-		      'SUMAvailability']}
-
-colors = { "R":"green",
-	   "NR":"red",
-	   "n/a":"white",
-	   "W":"yellow" ,
-	   "SD":"brown",
-	   "UD":"silver",
-	   "CE-SD":"brown",
-	   "SE-SD":"brown",
-	   "~":"yellow",
-	   "und":"black",
-	   " ":"white",
-	   "E": "red",
-	   "O":"green" ,
-	   "n/a*":"white"}
-	
-metorder = {    "01":"Downtimes_top",
-		"02": "HammerCloud",
-		"03":"SUMAvailability",
-		"04":"GoodT1linksfromT0",
-		"05":"GoodT1linksfromT1s",
-		"06":"GoodT1linksfromT2s",
-		"07":"GoodT1linkstoT1s",
-		"08":"GoodT1linkstoT2s",
-		"09":"GoodT2linksfromT1s",
-		"10":"GoodT2linkstoT1s",
-		"11":"T1linksfromT0",
-		"12":"T1linksfromtoT1s",
-		"13":"T1linkstoT2s",
-		"14":"T2linksfromT1s",
-		"15":"T2linkstoT1s",}
-
-metlegends = {  "Downtimes_top":"Maintenance",
-		"SAMNagiosAvailability":"Old SAM Availability", 
-		"SUMAvailability":"SAM Availability", 
-		"JobRobot":"Job Robot", 
-		"JobRobotDB":"Job Robot 'DB' (info)",
-		"HammerCloud":"HammerCloud",
-		"T1linksfromT0":"Active T1 links from T0",
-		"T1linksfromtoT1s":"Active T1 links from/to T1s",
-		"T1linkstoT2s":"Active T1 links to T2s",
-		"T2linksfromT1s":"Active T2 links from T1s",
-		"T2linkstoT1s":"Active T2 links to T1s",
-		"GoodT1linksfromT0":"Good T1 links from T0",
-		"GoodT1linksfromT1s":"Good T1 links from T1s",
-		"GoodT1linksfromT2s":"Good T1 links from T2s",
-		"GoodT1linkstoT1s":"Good T1 links to T1s",
-		"GoodT1linkstoT2s":"Good T1 links to T2s",
-		"GoodT2linksfromT1s":"Good T2 links from T1s",
-		"GoodT2linkstoT1s":"Good T2 links to T1s"}
-
-#
-# Functions : these should go soon on a module
-#
-# -----------------------------------------------------------------------------------------------------------
-
-def GetCriteriasList(sitename, criterias):
-	tier=sitename.split("_")[0]	
-	return criterias[tier]
-
-def CorrectGlobalMatrix(sitename,day,value):
-
-	if sitename.find('T0_CH_CERN') == 0: 
-		return 'n/a*'
-	if sitename.find('_CH_CAF') == 0: 
-		return 'n/a*'
-	
-	if sitename == 'T2_PL_Cracow':
-		return 'n/a*'
-		
-       	if sitename == 'T1_DE_FZK':
-		thedate=date(int(day[0:4]),int(day[5:7]),int(day[8:10]))
-		fzk_notvalidsince=date(2009,9,25)
-
-		if (thedate-fzk_notvalidsince).days > 0:
-			return 'n/a*'
-		
-       	if sitename == 'T1_DE_KIT':
-		thedate=date(int(day[0:4]),int(day[5:7]),int(day[8:10]))
-		kit_validsince=date(2009,9,25)
-
-		if (thedate-kit_validsince).days < 0:
-			return 'n/a*'
-		
-	return value
+cinfo = ColumnInfo(days)
 
 #----------------------------------------------------------------------------------------
-# doesn't seem to be used
-#def SiteExist(sites, sitename, date):
-#	
-#	items = sites[sitename]['IsSiteInSiteDB'].keys()
-#	items.sort()
-#	
-#	for coldate in items:
-#		if coldate.find(date) == 0:
-#			print coldate, sitename, sites[sitename]['IsSiteInSiteDB'][coldate]['Status']
-						
+# Functions
+
 def CheckInsertionDates(sites):
 	
 	items = sites.keys()
@@ -358,79 +131,70 @@ def ShiftDayForMetric(datestamp,col):
 	
 	
 
-def GetDailyMetricStatus(sites, SiteCommMatrix, MatrixStatusColors):
+def GetDailyMetricStatus(sites, SiteCommMatrix, colorCodes, urls):
 
-	prog = progressBar(0, 100, 77)
+	prog = ProgressBar(0, 100, 77)
 	iprog=0
 
 	for sitename in sites:
-
 		iprog+=100./len(sites)
 
 		prog.updateAmount(iprog)
 		sys.stdout.write(str(prog)+'\r')
 		sys.stdout.flush()
 
-		if not SiteCommMatrix.has_key(sitename):
+		if not SiteCommMatrix.has_key(sitename): # add site if not already there
 			SiteCommMatrix[sitename]={}
 
-		for col in ColumnMatrix:
-
+		for col in urls:
 			if not sites[sitename].has_key(col) or col == 'Downtimes_sam' or col == 'Downtimes_top':
 				continue
 
+			# set to null (default) values
+			nullValues = {}
+			nullValues['Status'] = 'n/a'
+			nullValues['Color'] = 'white'
+			nullValues['URL'] = ' '
+			nullValues['validity'] = 0
 			for i in range(0,days+1):
-				
-				d=datetime.timedelta(days-i);
-				dayloop=today-d	
-				dayloopstamp=dayloop.strftime("%Y-%m-%d")
-
-				infocol = {}
-				infocol['Status'] = 'n/a'
-				infocol['Color'] = 'white'
-				infocol['URL'] = ' '
-				infocol['validity'] = 0
-
+				d = datetime.timedelta(days-i)
+				dayloop = today-d
+				dayloopstamp = dayloop.strftime("%Y-%m-%d")
 				if not SiteCommMatrix[sitename].has_key(dayloopstamp):
-					SiteCommMatrix[sitename][dayloopstamp]={}
+					SiteCommMatrix[sitename][dayloopstamp] = {}
 				if not SiteCommMatrix[sitename][dayloopstamp].has_key(col):
-					SiteCommMatrix[sitename][dayloopstamp][col]={}
-
-				SiteCommMatrix[sitename][dayloopstamp][col]=infocol
+					SiteCommMatrix[sitename][dayloopstamp][col] = {}
+				SiteCommMatrix[sitename][dayloopstamp][col] = nullValues
 
 			items = sites[sitename][col].keys()
 			items.sort()
+			for coldate in items: # loop over each time/date combination
+				xmltime = datetime.datetime(*time.strptime(sites[sitename][col][coldate]['Time'], "%Y-%m-%d %H:%M:%S")[0:6])
+				xmlendtime = datetime.datetime(*time.strptime(sites[sitename][col][coldate]['EndTime'], "%Y-%m-%d %H:%M:%S")[0:6])
 
-			for coldate in items:
-
-				xmltime=datetime.datetime(*time.strptime(sites[sitename][col][coldate]['Time'], "%Y-%m-%d %H:%M:%S")[0:6])
-				xmlendtime=datetime.datetime(*time.strptime(sites[sitename][col][coldate]['EndTime'], "%Y-%m-%d %H:%M:%S")[0:6])
-
-				startxmldatetmp=xmltime.strftime("%Y-%m-%d 00:00:00")
-				startxmldate=datetime.datetime(*time.strptime(startxmldatetmp, "%Y-%m-%d %H:%M:%S")[0:6])
+				startxmldatetmp = xmltime.strftime("%Y-%m-%d 00:00:00")
+				startxmldate = datetime.datetime(*time.strptime(startxmldatetmp, "%Y-%m-%d %H:%M:%S")[0:6])
 
 				EndTXML = True
-				i=0
-				
+				i = 0
 				while ( EndTXML ):
-					
-					d=datetime.timedelta(i);
-					i+=1
-					dayloop=startxmldate+d	
-					dayloopstamp=dayloop.strftime("%Y-%m-%d")
-					dayloopstamp2=dayloop.strftime("%Y-%m-%d 00:00:00")
-					looptime=datetime.datetime(*time.strptime(dayloopstamp2, "%Y-%m-%d %H:%M:%S")[0:6])
+					d = datetime.timedelta(i) # convert i to number of days
+					i += 1
+					dayloop = startxmldate + d
+					dayloopstamp = dayloop.strftime("%Y-%m-%d")
+					dayloopstamp2 = dayloop.strftime("%Y-%m-%d 00:00:00")
+					looptime = datetime.datetime(*time.strptime(dayloopstamp2, "%Y-%m-%d %H:%M:%S")[0:6])
 
 					if dayloop > today:
-						EndTXML=False
+						EndTXML = False
 						continue
 						
-					diff1 = xmltime-looptime
-					diff1s=(diff1.days*86400+diff1.seconds)
-					diff2 = xmlendtime-looptime
-					diff2s=(diff2.days*86400+diff2.seconds)
-					diff3 = xmlendtime-xmltime
-					diff3s=(diff3.days*86400+diff3.seconds)
+					diff1  = xmltime-looptime
+					diff1s = (diff1.days*86400+diff1.seconds)
+					diff2  = xmlendtime-looptime
+					diff2s = (diff2.days*86400+diff2.seconds)
+					diff3  = xmlendtime-xmltime
+					diff3s = (diff3.days*86400+diff3.seconds)
 					if diff1s<=0 and diff2s>0:
 						if diff2s>=86400: validity=86400
 						else: validity=diff2s
@@ -441,18 +205,18 @@ def GetDailyMetricStatus(sites, SiteCommMatrix, MatrixStatusColors):
 						EndTXML=False
 						continue
 
-					if MatrixStatusColors[col][sites[sitename][col][coldate]['COLOR']] == "green":
+					if colorCodes[col][sites[sitename][col][coldate]['COLOR']] == "green":
 						status=sites[sitename][col][coldate]['Status']
 						statusu=sites[sitename][col][coldate]['URL']
 						statusc='green'
 						if sites[sitename][col][coldate]['Status']=="pend":
 							statusc='orange'
 							status='-'
-					elif MatrixStatusColors[col][sites[sitename][col][coldate]['COLOR']] == "white":
+					elif colorCodes[col][sites[sitename][col][coldate]['COLOR']] == "white":
 						statusu=' '
 						status='n/a'
 						statusc='white'
-					elif MatrixStatusColors[col][sites[sitename][col][coldate]['COLOR']] == "red":
+					elif colorCodes[col][sites[sitename][col][coldate]['COLOR']] == "red":
 						status=sites[sitename][col][coldate]['Status']
 						statusu=sites[sitename][col][coldate]['URL']
 						statusc='red'
@@ -461,24 +225,24 @@ def GetDailyMetricStatus(sites, SiteCommMatrix, MatrixStatusColors):
 						statusu='???'
 						statusc='white'
 
+					dayloopstamp3 = ShiftDayForMetric(dayloop,col)
+					todayst = date(int(todaystamp[0:4]),int(todaystamp[5:7]),int(todaystamp[8:10]))
+					dayloop3 = date(int(dayloopstamp3[0:4]),int(dayloopstamp3[5:7]),int(dayloopstamp3[8:10]))
+
+					if abs((dayloop3-todayst).days) > days:
+						continue
+
+					# set the actual values in SiteCommMatrix
 					infocol = {}
 					infocol['Status'] = status
 					infocol['Color'] = statusc
 					infocol['URL'] = statusu
 					infocol['validity'] = validity
-
-					dayloopstamp3=ShiftDayForMetric(dayloop,col)
-					todayst=date(int(todaystamp[0:4]),int(todaystamp[5:7]),int(todaystamp[8:10]))
-					dayloop3=date(int(dayloopstamp3[0:4]),int(dayloopstamp3[5:7]),int(dayloopstamp3[8:10]))
-
-					if abs((dayloop3-todayst).days) > days:
-						continue
-
 					if SiteCommMatrix[sitename][dayloopstamp3][col].has_key('validity'):
-						if validity>SiteCommMatrix[sitename][dayloopstamp3][col]['validity']:
-							SiteCommMatrix[sitename][dayloopstamp3][col]=infocol
+						if validity > SiteCommMatrix[sitename][dayloopstamp3][col]['validity']:
+							SiteCommMatrix[sitename][dayloopstamp3][col] = infocol
 					else:
-						SiteCommMatrix[sitename][dayloopstamp3][col]=infocol	
+						SiteCommMatrix[sitename][dayloopstamp3][col] = infocol	
 								
 					if dayloopstamp == todaystamp:
 						infocol = {}
@@ -486,14 +250,13 @@ def GetDailyMetricStatus(sites, SiteCommMatrix, MatrixStatusColors):
 						infocol['Color'] = 'white'
 						infocol['URL'] = ' '
 						infocol['validity'] = '0' 						
-						SiteCommMatrix[sitename][dayloopstamp][col]=infocol
+						SiteCommMatrix[sitename][dayloopstamp][col] = infocol
 
 	sys.stdout.write("\n")
 	sys.stdout.flush()
 
 
-def FilterSitesInTablesPlots(sitename, matrix=[], matrixgl=[], printAllSortsOfStuff=False):
-		
+def FilterSitesInTablesPlots(sitename, matrix=[], matrixgl=[]):
 	if sitename.find("T0_CH_CERN") == 0 : return 0
 	if sitename.find("T1_DE_FZK") == 0 : return 0
 	if sitename.find("T2_CH_CAF") == 0 : return 0
@@ -505,22 +268,22 @@ def FilterSitesInTablesPlots(sitename, matrix=[], matrixgl=[], printAllSortsOfSt
 
 	dt = SiteCommGlobalMatrix[sitename].keys()
 	dt.sort()
-	j=0
-	k=0
+	j = 0
+	k = 0
 	for i in dt:
-		j+=1
+		j += 1
 		if matrixgl[sitename][i].find("n/a") == 0 or matrixgl[sitename][i].find("n/a*") == 0: k+=1
 	if (j) == k : return 0
 	
 	return 1
 
 
-def SSBXMLParser(sites, ColumnMatrix):
+def SSBXMLParser(sites, urls):
 
-	prog = progressBar(0, 100, 77)
+	prog = ProgressBar(0, 100, 77)
 	iprog=0
 
-	ColumnItems = ColumnMatrix.keys()
+	ColumnItems = urls.keys()
 	ColumnItems.sort()
 
 	for col in ColumnItems:
@@ -531,47 +294,38 @@ def SSBXMLParser(sites, ColumnMatrix):
 		sys.stdout.write(str(prog)+'\r')
 		sys.stdout.flush()
 
-		url=ColumnMatrix[col]
+		url = urls[col]
 
-		fileN=pathN+"/"+col+".xml"
-
-		if GetURLs == True:
+		fileN = pathN+"/"+col+".xml"
+		if GetURLs == True: # download xml file if requested
 			print "Column %s - Getting the url %s" % (col, url)
 			os.system("curl -s -H 'Accept: text/xml'  '%s' > %s" % (url,fileN))
 	
-		f=file(fileN,'r')
-#		print "fileN: ",fileN
-#		sys.exit()
-		t= xml.dom.minidom.parse(f)
+		f = file(fileN,'r') # read xml file that was either just written, or was written in the previous run
+		t = xml.dom.minidom.parse(f)
 		f.close()
 
-		mes = "/getplotdata/csvdata/item"
+		for subUrl in xpath.Evaluate("/getplotdata/csvdata/item", t):
 
-		for urls in xpath.Evaluate(mes, t):
-
-			info={}
+			info={} # basic info about the site for this column
 			for option in ('Status', "COLOR", 'Time', 'EndTime','VOName','URL'):
-				for target in xpath.Evaluate(option, urls):
+				for target in xpath.Evaluate(option, subUrl):
 					if target.hasChildNodes():
-						s=target.firstChild.nodeValue.encode('ascii')
+						s = target.firstChild.nodeValue.encode('ascii')
 					else:
-						s=""
-					info[option]=s
+						s = ""
+					info[option] = s
 
-#                        if info['VOName'].find("T1_US_FNAL") != 0: continue
-#			print info['VOName']
-
-                        if info['VOName'].find("T3_FR-IPNL") == 0: continue
+			if info['VOName'].find("T3_FR-IPNL") == 0: continue
 			if info['VOName'].find("T2_TR_ULAKBIM") == 0: continue
 			
-			if not sites.has_key(info['VOName']):
-				sites[info['VOName']]={}
-			if not sites[info['VOName']].has_key(col):
-				sites[info['VOName']][col]={}
-			sites[info['VOName']][col][info['Time']]=info
+			if not sites.has_key(info['VOName']): # if site not already in dict, add an empty dict for it
+				sites[info['VOName']] = {}
+			if not sites[info['VOName']].has_key(col): # if site entry doesn't already have this column, add an empty dict for this column
+				sites[info['VOName']][col] = {}
+			sites[info['VOName']][col][info['Time']] = info # set the actual values
 
 			# Correct information from JobRobot --> 100%(600) -> 100% (example)
-
 			if col=="JobRobotDB" or col=="HammerCloud":
 				if sites[info['VOName']][col][info['Time']]['Status'] == "n/a":
 					sites[info['VOName']][col][info['Time']]['Status']="n/a"
@@ -593,123 +347,73 @@ def SSBXMLParser(sites, ColumnMatrix):
 	sys.stdout.write("\n")
 	sys.stdout.flush()
 
-# -----------------------------------------------------------------------------------------------------------
-
-class progressBar:
-	def __init__(self, minValue = 0, maxValue = 10, totalWidth=12):
-		self.progBar = "[]"   # This holds the progress bar string
-		self.min = minValue
-		self.max = maxValue
-		self.span = maxValue - minValue
-		self.width = totalWidth
-		self.amount = 0       # When amount == max, we are 100% done
-		self.updateAmount(0)  # Build progress bar string
-
-	def updateAmount(self, newAmount = 0):
-		if newAmount < self.min: newAmount = self.min
-		if newAmount > self.max: newAmount = self.max
-		self.amount = newAmount
-		
-		# Figure out the new percent done, round to an integer
-		diffFromMin = float(self.amount - self.min)
-		percentDone = (diffFromMin / float(self.span)) * 100.0
-		percentDone = round(percentDone)
-		percentDone = int(percentDone)
-		
-		# Figure out how many hash bars the percentage should be
-		allFull = self.width - 2
-		numHashes = (percentDone / 100.0) * allFull
-		numHashes = int(round(numHashes))
-		
-		# build a progress bar with hashes and spaces
-		self.progBar = "[" + '#'*numHashes + ' '*(allFull-numHashes) + "]"
-
-		# figure out where to put the percentage, roughly centered
-		percentPlace = (len(self.progBar) / 2) - len(str(percentDone))
-		percentString = str(percentDone) + "%"
-
-		# slice the percentage into the bar
-		self.progBar = self.progBar[0:percentPlace] + percentString + self.progBar[percentPlace+len(percentString):]
-
-	def __str__(self):
-		return str(self.progBar)
-
-def GetDailyScheduledDowntimeTopologyStatus(sites, SiteCommMatrix, MatrixStatusColors):
+def GetDailyScheduledDowntimeTopologyStatus(sites, SiteCommMatrix, colorCodes, urls):
 
 	# Leer Downtimes Topology (por ahora uso Time y EndTime para decidir cuanto duran los Downtimes)
 	# por defecto todos los dias son Ok, y uso Time y EndTime para asignar los Downtimes.
 
 	# Reading the Topology Downtimes
 
-	ColumnMatrixD = {}  # SSB URLs Matrix
-	ColumnMatrixD['Downtimes_top']=Downtimes_top
-
-	prog = progressBar(0, 100, 77)
+	prog = ProgressBar(0, 100, 77)
 	iprog=0
 
 	for sitename in sites:
-
 		iprog+=100./len(sites)
 		prog.updateAmount(iprog)
 		sys.stdout.write(str(prog)+'\r')
 		sys.stdout.flush()
 
-		if not SiteCommMatrix.has_key(sitename):
+		if not SiteCommMatrix.has_key(sitename): # add dict for site
 			SiteCommMatrix[sitename]={}
 		
-		for col in ColumnMatrixD:
-
+		for col in urls: # loop over columns
+			if col != "Downtimes_top":
+				continue
 			infocol = {}
 
 			if not sites[sitename].has_key(col):
 				sites[sitename][col] = {}
-			
+
+			# set downtime metric to green by default
 			for i in range(0,days+1):
 			
-				d=datetime.timedelta(days-i);
-				dayloop=today-d
-				dayloopstamp=dayloop.strftime("%Y-%m-%d")
+				d = datetime.timedelta(days-i);
+				dayloop = today-d
+				dayloopstamp = dayloop.strftime("%Y-%m-%d")
 
 				if not SiteCommMatrix[sitename].has_key(dayloopstamp):
-					SiteCommMatrix[sitename][dayloopstamp]={}
+					SiteCommMatrix[sitename][dayloopstamp] = {}
 
 				infocol['Status'] = "Up"
 				infocol['Color'] = "green"
 				infocol['URL'] = ' ' 
-				SiteCommMatrix[sitename][dayloopstamp][col]=infocol
+				SiteCommMatrix[sitename][dayloopstamp][col] = infocol
 
 			items = sites[sitename][col].keys()
 			items.sort()
 			
 			for stdate in items:
-
-				if MatrixStatusColors[col][sites[sitename][col][stdate]['COLOR']] == "white" or  MatrixStatusColors[col][sites[sitename][col][stdate]['COLOR']] == "green":
+				colorTmp = colorCodes[col][sites[sitename][col][stdate]['COLOR']] # color taken from sites
+				if colorTmp == "white" or  colorTmp == "green": # if they're ok, they don't need to be corrected for downtimes
 					continue
-
-				sttdate=stdate[0:stdate.find(" ")]
-				enddate=sites[sitename][col][stdate]['EndTime'][0:sites[sitename][col][stdate]['EndTime'].find(" ")]
-				cl=sites[sitename][col][stdate]['COLOR']
+				sttdate = stdate[0:stdate.find(" ")]
+				enddate = sites[sitename][col][stdate]['EndTime'][0:sites[sitename][col][stdate]['EndTime'].find(" ")]
+				cl = sites[sitename][col][stdate]['COLOR']
 
 				for i in range(0,days+1):
-			
-					d=datetime.timedelta(days-i);
-					dayloop=today-d
-					dayloopstamp=dayloop.strftime("%Y-%m-%d")
-
+					d = datetime.timedelta(days-i);
+					dayloop = today-d
+					dayloopstamp = dayloop.strftime("%Y-%m-%d")
 					kk=0
-
 					if stdate.find(dayloopstamp) == 0:
-
 						wloop=True
 						while (wloop):
-
-							infocol266={}
-							
 							c = datetime.datetime(*time.strptime(sttdate,"%Y-%m-%d")[0:5])
-							d=datetime.timedelta(kk);
-							dayloop=c+d
-							dayloopstamp=dayloop.strftime("%Y-%m-%d")
+							d = datetime.timedelta(kk);
+							dayloop = c+d
+							dayloopstamp  = dayloop.strftime("%Y-%m-%d")
 
+							# I'm guessing that this is supposed skip brown entries, but the first and last if statements seem to have typos.
 							if SiteCommMatrix[sitename].has_key(col):
 								if SiteCommMatrix[sitename][col].has_key(dayloopstamp):
 									if SiteCommMatrix[sitename][col][dayloopstamp].has_key('Color'):
@@ -717,150 +421,73 @@ def GetDailyScheduledDowntimeTopologyStatus(sites, SiteCommMatrix, MatrixStatusC
 											kk+=1
 											continue
 
-							if MatrixStatusColors[col][sites[sitename][col][stdate]['COLOR']] == 'brown':
-								infocol266['Color'] = 'brown'
-								infocol266['Status'] = 'SD'
-								infocol266['URL'] = sites[sitename][col][stdate]['URL']
-	       						if MatrixStatusColors[col][sites[sitename][col][stdate]['COLOR']] == 'grey':
+							# get downtime info from sites and put it into SiteCommMatrix
+							values = {}
+							if colorTmp == 'brown':
+								values['Color'] = 'brown'
+								values['Status'] = 'SD'
+								values['URL'] = sites[sitename][col][stdate]['URL']
+	       						if colorTmp == 'grey':
 								if sites[sitename][col][stdate]['Status'].find("OUTAGE UNSCHEDULED") == 0:
-									infocol266['Color'] = 'silver'
-									infocol266['Status'] = 'UD'
-									infocol266['URL'] = sites[sitename][col][stdate]['URL']
+									values['Color'] = 'silver'
+									values['Status'] = 'UD'
+									values['URL'] = sites[sitename][col][stdate]['URL']
 								else:
-									infocol266['Color'] = 'yellow'
-									infocol266['Status'] = '~'
-									infocol266['URL'] = sites[sitename][col][stdate]['URL']
-							if MatrixStatusColors[col][sites[sitename][col][stdate]['COLOR']] == 'yellow':
-								infocol266['Color'] = 'yellow'
-								infocol266['Status'] = '~'
-								infocol266['URL'] = sites[sitename][col][stdate]['URL']
+									values['Color'] = 'yellow'
+									values['Status'] = '~'
+									values['URL'] = sites[sitename][col][stdate]['URL']
+							if colorTmp == 'yellow':
+								values['Color'] = 'yellow'
+								values['Status'] = '~'
+								values['URL'] = sites[sitename][col][stdate]['URL']
 							
 							if dayloop > today: break # ignore future downtimes
 
-							SiteCommMatrix[sitename][dayloopstamp][col]=infocol266
+							SiteCommMatrix[sitename][dayloopstamp][col] = values
 
 							kk+=1
 
 							if (dayloopstamp == enddate): wloop=False
-						
-			infocol27={}
-			infocol27['Status'] = ' '
-			infocol27['URL'] = ' '
-			infocol27['Color'] = 'white'
-			SiteCommMatrix[sitename][todaystamp][col]=infocol27
+
+			# set today's downtime status to white
+			nullVals = {}
+			nullVals['Status'] = ' '
+			nullVals['URL'] = ' '
+			nullVals['Color'] = 'white'
+			SiteCommMatrix[sitename][todaystamp][col] = nullVals
 
 	sys.stdout.write("\n")
 	sys.stdout.flush()
 
-def CorrectDailyMetricsFromASCIIFile(sites, SiteCommMatrix, DailyMetricsCorrected):
-	
-	#
-	# Plain text to be used to modify SSB inputs to build SiteReadiness tables
-	# Useful to correct bugs and/or modify daily metric values for a given site or all sites
-	#
+def GetCriteriasList(sitename, criteria):
+	# return list of columns (criteria) that apply to this site, based on its tier
+	tier = sitename.split("_")[0]	
+	return criteria[tier]
 
-	prog = progressBar(0, 100, 77)
-	iprog=0
-	
-	f=open(DailyMetricsCorrected)
-	flen=len(f.readlines())
-	f.close()
-	
-	Reader = csv.reader(open(DailyMetricsCorrected), delimiter=',', quotechar='|')
-
-	for row in Reader:
-	
-		iprog+=100./flen
-		
-		prog.updateAmount(iprog)
-		sys.stdout.write(str(prog)+'\r')
-		sys.stdout.flush()
-
-		infomod = {}
-
-		if len(row)==0: continue # skip empty lines
-		if row[0].find("#")==0: continue # skip headers 
-		if row[0] == 'ALL SITES':
-			for sitename in sites:
-				infomod['Status'] = row[4] + '*'
-				infomod['Color'] = row[3]
-				if SiteCommMatrix[sitename].has_key(row[1]):
-					SiteCommMatrix[sitename][row[1]][row[2]]=infomod
-		elif row[0] == 'T1_*':
-			for sitename in sites:
-				if sitename.find("T1_") == 0: 
-					infomod['Status'] = row[4] + '*'
-					infomod['Color'] = row[3]
-					if SiteCommMatrix[sitename].has_key(row[1]):
-						SiteCommMatrix[sitename][row[1]][row[2]]=infomod
-		elif row[0] == 'T2_*':
-			for sitename in sites:
-				if sitename.find("T2_") == 0: 
-					infomod['Status'] = row[4] + '*'
-					infomod['Color'] = row[3]
-					if SiteCommMatrix[sitename].has_key(row[1]):
-						SiteCommMatrix[sitename][row[1]][row[2]]=infomod
-		else:
-			infomod['Status'] = row[4] + '*'
-			infomod['Color'] = row[3]
-			if SiteCommMatrix.has_key(row[0]):
-				if SiteCommMatrix[row[0]].has_key(row[1]):
-					SiteCommMatrix[row[0]][row[1]][row[2]]=infomod
-	sys.stdout.write("\n")
-	sys.stdout.flush()
-
-
-def EvaluateDailyStatus(SiteCommMatrix, SiteCommMatrixT1T2, criterias):
-	
-	# Daily Metrics
-
-	prog = progressBar(0, 100, 77)
+def EvaluateDailyStatus(SiteCommMatrix, SiteCommMatrixT1T2, criteria):
+	# set value for the 'Daily Metric' column in SiteCommMatrixT1T2
+	prog = ProgressBar(0, 100, 77)
 	iprog=0
 
 	for sitename in SiteCommMatrix:
-
 		iprog+=100./len(SiteCommMatrix)
 		prog.updateAmount(iprog)
 		sys.stdout.write(str(prog)+'\r')
 		sys.stdout.flush()
 
-		SiteCommMatrixT1T2[sitename]={}
-
+		SiteCommMatrixT1T2[sitename] = {}
 		items = SiteCommMatrix[sitename].keys()
 		items.sort()
 
-		status=' '
-
+		status  = ' '
 		for day in items:
-			
 			status = 'O'
-			
-			for crit in GetCriteriasList(sitename, criterias):
-
+			for crit in GetCriteriasList(sitename, criteria): # loop through the columns (criteria) that apply to this site
 				if not SiteCommMatrix[sitename][day].has_key(crit):
-
-					infocol3={}
-					infocol3['Status']='n/a'
-					infocol3['Color']='white'
+					infocol3 = {}
+					infocol3['Status'] = 'n/a'
+					infocol3['Color'] = 'white'
 					SiteCommMatrix[sitename][day][crit] = infocol3
-
-				thedate=date(int(day[0:4]),int(day[5:7]),int(day[8:10]))
-				sam_change=date(2011,5,11)
-				sum_change=date(2012,2,13)
-
-				if (thedate-sam_change).days > 0 and crit == "SAMAvailability": continue
-				if (thedate-sam_change).days <= 0 and crit == "SAMNagiosAvailability": continue
-
-				if (thedate-sum_change).days > 0 and crit == "SAMNagiosAvailability": continue
-				if (thedate-sum_change).days <= 0 and crit == "SUMAvailability": continue
-
-				jrdb_change=date(2012,3,28)
-				if (thedate-jrdb_change).days > 0 and crit == "JobRobot": continue
-				if (thedate-jrdb_change).days <= 0 and crit == "JobRobotDB": continue
-
-				hc_change=date(2012,4,17)
-				if (thedate-hc_change).days > 0 and (crit == "JobRobot" or crit == "JobRobotDB"): continue
-				if (thedate-hc_change).days <= 0 and crit == "HammerCloud": continue
 
 				if SiteCommMatrix[sitename][day][crit]['Color'] == 'red':
 					status = 'E'
@@ -868,10 +495,9 @@ def EvaluateDailyStatus(SiteCommMatrix, SiteCommMatrixT1T2, criterias):
 			if SiteCommMatrix[sitename][day]['Downtimes_top']['Color'] == 'brown':
 				status = 'SD'
 
-			testdate=date(int(day[0:4]),int(day[5:7]),int(day[8:10]))
-			sitedbtimeint = testdate-IsSiteInSiteDB_validsince
-
 			# exclude sites that are not in SiteDB
+			testdate = date(int(day[0:4]),int(day[5:7]),int(day[8:10]))
+			sitedbtimeint = testdate-IsSiteInSiteDB_validsince
 			if sitedbtimeint.days >= 0:
 				if SiteCommMatrix[sitename][day].has_key('IsSiteInSiteDB'):
 					if SiteCommMatrix[sitename][day]['IsSiteInSiteDB']['Color'] == 'white':
@@ -880,23 +506,47 @@ def EvaluateDailyStatus(SiteCommMatrix, SiteCommMatrixT1T2, criterias):
 			if day == todaystamp:
 				status = ' '
 
-			SiteCommMatrixT1T2[sitename][day]=status
+			SiteCommMatrixT1T2[sitename][day] = status
 
 	sys.stdout.write("\n")
 	sys.stdout.flush()
 
 
-def EvaluateSiteReadiness(SiteCommMatrixT1T2, SiteCommGlobalMatrix):
+def CorrectGlobalMatrix(sitename,day,value):
+
+	if sitename.find('T0_CH_CERN') == 0: 
+		return 'n/a*'
+	if sitename.find('_CH_CAF') == 0: 
+		return 'n/a*'
+	
+	if sitename == 'T2_PL_Cracow':
+		return 'n/a*'
+		
+       	if sitename == 'T1_DE_FZK':
+		thedate=date(int(day[0:4]),int(day[5:7]),int(day[8:10]))
+		fzk_notvalidsince=date(2009,9,25)
+
+		if (thedate-fzk_notvalidsince).days > 0:
+			return 'n/a*'
+		
+       	if sitename == 'T1_DE_KIT':
+		thedate=date(int(day[0:4]),int(day[5:7]),int(day[8:10]))
+		kit_validsince=date(2009,9,25)
+
+		if (thedate-kit_validsince).days < 0:
+			return 'n/a*'
+		
+	return value
+						
+def EvaluateSiteReadiness(SiteCommMatrixT1T2, SiteCommGlobalMatrix, urls):
+	prog = ProgressBar(0, 100, 77)
+	iprog=0
 
 	sitesit = SiteCommMatrixT1T2.keys()
 	sitesit.sort()
-	
-	prog = progressBar(0, 100, 77)
-	iprog=0
 
 	for sitename in sitesit:
-
-		iprog+=100./len(sitesit)
+		iprog += 100./len(sitesit)
 		prog.updateAmount(iprog)
 		sys.stdout.write(str(prog)+'\r')
 		sys.stdout.flush()
@@ -904,39 +554,35 @@ def EvaluateSiteReadiness(SiteCommMatrixT1T2, SiteCommGlobalMatrix):
 		if not SiteCommGlobalMatrix.has_key(sitename):
 			SiteCommGlobalMatrix[sitename]={}
 
-		tier=sitename.split("_")[0]
+		tier = sitename.split("_")[0]
 		
 		for i in range(0,days-dayssc):
-	
-			d=datetime.timedelta(i);
-			dayloop=today-d	
-			dayloopstamp=dayloop.strftime("%Y-%m-%d")
-			dm1=datetime.timedelta(1)
-			dayloopm1=dayloop-dm1
-			dayloopstampm1=dayloopm1.strftime("%Y-%m-%d")
-			dm2=datetime.timedelta(2)
-			dayloopm2=dayloop-dm2
-			dayloopstampm2=dayloopm2.strftime("%Y-%m-%d")
+			d = datetime.timedelta(i)
+			dayloop = today-d
+			dayloopstamp = dayloop.strftime("%Y-%m-%d")
+			dm1 = datetime.timedelta(1)
+			dayloopm1 = dayloop-dm1
+			dayloopstampm1 = dayloopm1.strftime("%Y-%m-%d")
+			dm2 = datetime.timedelta(2)
+			dayloopm2 = dayloop-dm2
+			dayloopstampm2 = dayloopm2.strftime("%Y-%m-%d")
 			
-			statusE=0
-		
+			statusE = 0
 			for j in range(0,dayssc):
+				dd = datetime.timedelta(j);
+				dayloop2 = dayloop-dd
+				dayloopstamp2 = dayloop2.strftime("%Y-%m-%d")
 
-				dd=datetime.timedelta(j);
-				dayloop2=dayloop-dd
-				dayloopstamp2=dayloop2.strftime("%Y-%m-%d")
-
-				dayofweek2=dayloop2.weekday()
+				dayofweek2 = dayloop2.weekday()
 				
-				if SiteCommMatrixT1T2[sitename][dayloopstamp2] == 'E':
+				if SiteCommMatrixT1T2[sitename][dayloopstamp2] == 'E': # Daily Metric value
 					if ( tier == "T2" or tier == "T3") and (dayofweek2 == 5 or dayofweek2 == 6):
 						if CountWeekendsT2 == False: # skip Errors on weekends for T2s
 							continue
-					statusE+=1
+					statusE += 1
 
 			status="n/a"
 			colorst="white"
-
 			if statusE > 2:
 				status="NR"
 				colorst="red"
@@ -953,20 +599,18 @@ def EvaluateSiteReadiness(SiteCommMatrixT1T2, SiteCommGlobalMatrix):
 				status='SD'
 				colorst="brown"
 		
-			SiteCommGlobalMatrix[sitename][dayloopstamp] = status
+			SiteCommGlobalMatrix[sitename][dayloopstamp] = status # set actual SR value
 
 		if ( tier == "T2" or tier == "T3") :
-
 			for i in range(0,days-dayssc):
-	
-				d=datetime.timedelta(i);
-				dsc=datetime.timedelta(days-dayssc-1);
-				dayloop=today-dsc+d
-				dayofweek=dayloop.weekday()
-				dayloopstamp=dayloop.strftime("%Y-%m-%d")
-				dm1=datetime.timedelta(1)
-				dayloopm1=dayloop-dm1
-				dayloopstampm1=dayloopm1.strftime("%Y-%m-%d")
+				d = datetime.timedelta(i);
+				dsc = datetime.timedelta(days-dayssc-1);
+				dayloop = today-dsc+d
+				dayofweek = dayloop.weekday()
+				dayloopstamp = dayloop.strftime("%Y-%m-%d")
+				dm1 = datetime.timedelta(1)
+				dayloopm1 = dayloop-dm1
+				dayloopstampm1 = dayloopm1.strftime("%Y-%m-%d")
 
 				if SiteCommMatrixT1T2[sitename][dayloopstamp] == 'E':
 					if dayofweek == 5 or dayofweek == 6: # id. weekends
@@ -979,47 +623,36 @@ def EvaluateSiteReadiness(SiteCommMatrixT1T2, SiteCommGlobalMatrix):
 							else:
 								SiteCommGlobalMatrix[sitename][dayloopstamp] = SiteCommGlobalMatrix[sitename][dayloopstampm1]
 						
-
 	sys.stdout.write("\n")
 	sys.stdout.flush()
 
-        ##############################
-	# put in blank current day   #
-        ##############################
-
-        for sitename in SiteCommMatrixT1T2:
-		for col in ColumnMatrix:
+	# put in blank current day
+	for sitename in SiteCommMatrixT1T2:
+		for col in urls:
 			if SiteCommMatrix[sitename][todaystamp].has_key(col):
 				SiteCommMatrix[sitename][todaystamp][col]['Status'] = ' '
 				SiteCommMatrix[sitename][todaystamp][col]['Color'] = 'white'
 				SiteCommGlobalMatrix[sitename][todaystamp] = ' '
 
-        ####################################################################
 	# Correct some known sites metrics
-        ####################################################################
-
 	for sitename in SiteCommGlobalMatrix:
 		for dt in SiteCommGlobalMatrix[sitename]:
-			SiteCommGlobalMatrix[sitename][dt]=CorrectGlobalMatrix(sitename, dt, SiteCommGlobalMatrix[sitename][dt])
+			SiteCommGlobalMatrix[sitename][dt] = CorrectGlobalMatrix(sitename, dt, SiteCommGlobalMatrix[sitename][dt])
 	for sitename in SiteCommMatrixT1T2:
 		for dt in SiteCommMatrixT1T2[sitename]:
-			SiteCommMatrixT1T2[sitename][dt]=CorrectGlobalMatrix(sitename, dt, SiteCommMatrixT1T2[sitename][dt])
+			SiteCommMatrixT1T2[sitename][dt] = CorrectGlobalMatrix(sitename, dt, SiteCommMatrixT1T2[sitename][dt])
 
 def ProduceSiteReadinessSSBFile(SiteCommGlobalMatrix, fileSSB):
-
-	fileHandle = open ( fileSSB , 'w' )
-	
-	sitesit = SiteCommGlobalMatrix.keys()
-	sitesit.sort()
-	
-	prog = progressBar(0, 100, 77)
+	prog = ProgressBar(0, 100, 77)
 	iprog=0
 
+	fileHandle = open(fileSSB,'w')
 	SRMatrixColors = { "R":"green", "W":"yellow", "NR":"red", "SD":"brown", " ":"white", "n/a":"white", "n/a*":"white" }
 
+	sitesit = SiteCommGlobalMatrix.keys()
+	sitesit.sort()
 	for sitename in sitesit:
-
-		iprog+=100./len(sitesit)
+		iprog += 100./len(sitesit)
 		prog.updateAmount(iprog)
 		sys.stdout.write(str(prog)+'\r')
 		sys.stdout.flush()
@@ -1036,7 +669,7 @@ def ProduceSiteReadinessSSBFile(SiteCommGlobalMatrix, fileSSB):
 		else:
 			linkSSB = "unknown"
 
-		tofile=todaystampfileSSB + '\t' + sitename + '\t' + status + '\t' + colorst + '\t' + linkSSB + "#" + sitename + "\n"
+		tofile = todaystampfileSSB + '\t' + sitename + '\t' + status + '\t' + colorst + '\t' + linkSSB + "#" + sitename + "\n"
 		fileHandle.write(tofile)
 		
 	fileHandle.close()
@@ -1077,7 +710,7 @@ def ProduceSiteReadinessHTMLViews(SiteCommGlobalMatrix, metorder, metlegends, co
 	sitesit = SiteCommGlobalMatrix.keys()
 	sitesit.sort()
 
-	prog = progressBar(0, 100, 77)
+	prog = ProgressBar(0, 100, 77)
 	iprog=0
 
 	for sitename in sitesit:
@@ -1088,8 +721,6 @@ def ProduceSiteReadinessHTMLViews(SiteCommGlobalMatrix, metorder, metlegends, co
 		sys.stdout.flush()
 
 		if FilterSitesInTablesPlots(sitename, SiteCommMatrix, SiteCommGlobalMatrix, True) : 
-#		if True:
-
 			fileHandle.write("<a name=\""+ sitename + "\"></a>\n\n")
 			fileHandle.write("<div id=para-"+ sitename +">\n")
 
@@ -1463,7 +1094,7 @@ def ProduceSiteReadinessStatistics(SiteCommMatrix, SiteCommGlobalMatrix, SiteRea
 	sitesit = SiteCommGlobalMatrix.keys()
 	sitesit.sort()
 
-	prog = progressBar(0, 100, 77)
+	prog = ProgressBar(0, 100, 77)
 	iprog=0
 
 	for dayspan in 30, 15, 7:
@@ -1530,27 +1161,22 @@ def ProduceSiteReadinessStatistics(SiteCommMatrix, SiteCommGlobalMatrix, SiteRea
 
 
 def ProduceSiteReadinessSSBFiles(SiteCommMatrix, SiteCommGlobalMatrix, SiteReadinessStats2, pathout):
-	
-	prog = progressBar(0, 100, 77)
+	prog = ProgressBar(0, 100, 77)
 	iprog=0
 
 	for dayspan in 30, 15, 7:
-
-		iprog+=100./3.
+		iprog += 100./3.
 		prog.updateAmount(iprog)
 		sys.stdout.write(str(prog)+'\r')
 		sys.stdout.flush()
 
-		fileSSBRanking= pathout + '/SiteReadinessRanking_SSBfeed_last' + str(dayspan) + 'days.txt' 
+		fileSSBRanking = pathout + '/SiteReadinessRanking_SSBfeed_last' + str(dayspan) + 'days.txt' 
 		fileHandle = open ( fileSSBRanking , 'w' )
 
 		sitesit=SiteCommGlobalMatrix.keys()
 		sitesit.sort()
-		
 		for sitename in sitesit:
-
 			if not FilterSitesInTablesPlots(sitename, SiteCommMatrix, SiteCommGlobalMatrix) : continue
-
 			pl = "R+Wcorr_perc"
 			color="red"
 			if sitename.find("T1") == 0 and SiteReadinessStats2[sitename][dayspan][pl]>90:
@@ -1574,7 +1200,7 @@ def ProduceSiteReadinessSSBFiles(SiteCommMatrix, SiteCommGlobalMatrix, SiteReadi
 
 def ProduceSiteReadinessRankingPlots(SiteCommMatrix, SiteCommGlobalMatrix, SiteReadinessStats2, pathoutPLOTS):
 	
-	prog = progressBar(0, 100, 77)
+	prog = ProgressBar(0, 100, 77)
 	iprog=0
 
 	sitesit=SiteCommGlobalMatrix.keys()
@@ -1675,7 +1301,7 @@ def ProduceSiteReadinessRankingPlots(SiteCommMatrix, SiteCommGlobalMatrix, SiteR
 
 def PrintDailyMetricsStats(SiteCommMatrix, SiteCommMatrixT1T2, SiteCommGlobalMatrix, fileDailyStat):
 
-	prog = progressBar(0, 100, 77)
+	prog = ProgressBar(0, 100, 77)
 	iprog=0
 
 	fileHandle = open ( fileDailyStat , 'w' )
@@ -1730,7 +1356,7 @@ def PrintDailyMetricsStats(SiteCommMatrix, SiteCommMatrixT1T2, SiteCommGlobalMat
 
 def PrintSiteReadinessMetricsStats(SiteCommMatrix, SiteCommGlobalMatrix, fileReadinessStat):
 	
-	prog = progressBar(0, 100, 77)
+	prog = ProgressBar(0, 100, 77)
 	iprog=0
 
 	fileHandle = open ( fileReadinessStat , 'w' )
@@ -1786,7 +1412,7 @@ def PrintSiteReadinessMetricsStats(SiteCommMatrix, SiteCommGlobalMatrix, fileRea
 
 def PrintDailyMetrics(SiteCommMatrix, SiteCommGlobalMatrix, metorder):
 	
-	prog = progressBar(0, 100, 77)
+	prog = ProgressBar(0, 100, 77)
 	iprog=0
 
 	indmetrics = metorder.keys()
@@ -1828,7 +1454,7 @@ def PrintDailyMetrics(SiteCommMatrix, SiteCommGlobalMatrix, metorder):
 				
 def CreateSimbLinks(pathoutHTML,pathoutPLOTS):
 	
-	prog = progressBar(0, 100, 77)
+	prog = ProgressBar(0, 100, 77)
 	iprog=0
 
 	os.chdir(pathoutHTML)
@@ -1858,7 +1484,7 @@ def CreateSimbLinks(pathoutHTML,pathoutPLOTS):
 
 def DumpPickleFiles(SiteCommMatrix,SiteCommMatrixT1T2,SiteCommGlobalMatrix,pathoutASCII):
 
-	prog = progressBar(0, 100, 77)
+	prog = ProgressBar(0, 100, 77)
 	iprog=0
 
 	iprog+=100./3.
@@ -1904,34 +1530,29 @@ SiteCommGlobalMatrix = {}
 SiteCommMatrixT1T2 = {}
 SiteCommStatistics = {}
 
-criteriasT1 = ( 'JobRobot', 'SAMNagiosAvailability', 'T1linksfromT0', 'T1linksfromtoT1s', 'T1linkstoT2s', 'GoodT1linksfromT0', 'GoodT1linksfromT1s', 'GoodT1linksfromT2s', 'GoodT1linkstoT1s', 'GoodT1linkstoT2s' )
-criteriasT2 = ( 'JobRobot', 'SAMNagiosAvailability', 'T2linksfromT1s', 'T2linkstoT1s', 'GoodT2linksfromT1s', 'GoodT2linkstoT1s')
-
-# parse SSB XML data from all relevants columns
+# note: SiteCommMatrix is a summary of sites, with indices site name, time, column and values status, color, url, and validity
+# SiteCommMatrix[site name][time][column] = [status, color, url, validity]
 
 print "\nObtaining XML info from SSB 'commission' view\n"
-SSBXMLParser(sites, ColumnMatrix)
+SSBXMLParser(sites, cinfo.urls) # fill all info into sites
 
 print "\nExtracting Daily Metrics for CMS sites\n"
-GetDailyMetricStatus(sites, SiteCommMatrix, MatrixStatusColors)
+GetDailyMetricStatus(sites, SiteCommMatrix, cinfo.colorCodes, cinfo.urls) # fill SiteCommMatrix with info from sites
 
 print "\nExtracting Scheduled Downtime Topology Daily Metrics for CMS sites\n"
-GetDailyScheduledDowntimeTopologyStatus(sites, SiteCommMatrix, MatrixStatusColors)
-
-print "\nCorrecting Daily Metrics from external ascii file\n"
-CorrectDailyMetricsFromASCIIFile(sites, SiteCommMatrix, DailyMetricsCorrected)
+GetDailyScheduledDowntimeTopologyStatus(sites, SiteCommMatrix, cinfo.colorCodes, cinfo.urls) # set downtime values in SiteCommMatrix using info from sites
 
 print "\nEvaluating Daily Status\n"
-EvaluateDailyStatus(SiteCommMatrix, SiteCommMatrixT1T2, criterias)
+EvaluateDailyStatus(SiteCommMatrix, SiteCommMatrixT1T2, cinfo.criteria) # set value for the 'Daily Metric' column in SiteCommMatrixT1T2
 
 print "\nEvaluating Site Readiness\n"
-EvaluateSiteReadiness(SiteCommMatrixT1T2, SiteCommGlobalMatrix)
+EvaluateSiteReadiness(SiteCommMatrixT1T2, SiteCommGlobalMatrix, cinfo.urls)
 
 print "\nProducing Site Readiness SSB input file\n"
-ProduceSiteReadinessSSBFile(SiteCommGlobalMatrix, fileSSB)
+ProduceSiteReadinessSSBFile(SiteCommGlobalMatrix, pathout + '/SiteReadiness_SSBfeed.txt') # write info from SiteCommGlobalMatrix to txt file
 
 print "\nProducing Site Readiness HTML view\n"
-ProduceSiteReadinessHTMLViews(SiteCommGlobalMatrix, metorder, metlegends, colors, pathoutHTML)
+ProduceSiteReadinessHTMLViews(SiteCommGlobalMatrix, cinfo.metorder, cinfo.metlegends, cinfo.colors, pathoutHTML)
 
 print "\nProducing Site Readiness Statistics\n"
 ProduceSiteReadinessStatistics(SiteCommMatrix, SiteCommGlobalMatrix, SiteCommStatistics)
