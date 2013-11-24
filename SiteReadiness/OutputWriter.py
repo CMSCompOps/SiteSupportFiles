@@ -11,7 +11,7 @@ from datetime import date
 from ProgressBar import ProgressBar
 
 class OutputWriter:
-    def __init__(self, options, cinfo, matrices, tinfo):
+    def __init__(self, options, cinfo, tinfo, matrices):
         self.options = options
         self.matrices = matrices
         self.ssbOutDir   = options.path_out + "/toSSB"
@@ -30,27 +30,24 @@ class OutputWriter:
         if not os.path.exists(self.plotOutDir):  os.makedirs(self.plotOutDir)
         if not os.path.exists(self.asciiOutDir): os.makedirs(self.asciiOutDir)
             
-        
     #----------------------------------------------------------------------------------------
     # don't write any output for this site?
     def SkipSiteOutput(self, sitename):
         if sitename.find("T0_CH_CERN") == 0 : return 1
-        if sitename.find("T1_DE_FZK") == 0 : return 1
-        if sitename.find("T2_CH_CAF") == 0 : return 1
         if sitename.find("T1_US_FNAL_Disk") == 0 : return 1
-        if sitename.find("T2_TR_ULAKBIM") == 0 : return 1
         if sitename.find("_Disk") >= 0 : return 1
-    
         if sitename.find("T3_") == 0 : return 1
     
-        dt = self.matrices.readiValues[sitename].keys()
-        dt.sort()
-        j = 0
-        k = 0
-        for i in dt:
+        # don't write info for sites that are 'n/a' for the entire time period
+        dayVals = self.matrices.readiValues[sitename].keys()
+        dayVals.sort()
+        j = 0; k = 0
+        for day in dayVals:
             j += 1
-            if self.matrices.readiValues[sitename][i].find("n/a") == 0 or self.matrices.readiValues[sitename][i].find("n/a*") == 0: k+=1
-        if (j) == k : return 1
+            if self.matrices.readiValues[sitename][day].find("n/a") == 0 or self.matrices.readiValues[sitename][day].find("n/a*") == 0:
+                k += 1
+        if j==k:
+            return 1
         
         return 0
     
@@ -196,7 +193,7 @@ class OutputWriter:
     
                     met=self.cinfo.metorder[metnumber]
     
-                    if not self.matrices.allInfo[sitename][dates[0]].has_key(met) or met == 'IsSiteInSiteDB': continue # ignore 
+                    if not self.matrices.columnValues[sitename][dates[0]].has_key(met) or met == 'IsSiteInSiteDB': continue # ignore 
                     if sitename.find("T1_CH_CERN") == 0 and met == 'T1linksfromT0': continue # ignore 
     
                     if met == 'SAMAvailability':
@@ -209,8 +206,8 @@ class OutputWriter:
                         igdays+=1
                         if (self.cinfo.days - igdays)>self.cinfo.daysToShow-1: continue
     
-                        state = self.matrices.allInfo[sitename][datesgm][met]['Status']
-                        colorst=self.matrices.allInfo[sitename][datesgm][met]['Color']
+                        state = self.matrices.columnValues[sitename][datesgm][met]['Status']
+                        colorst=self.matrices.columnValues[sitename][datesgm][met]['Color']
 #                        if met == 'GoodT2linksfromT1s':
 #                            print date,state,colorst
                         datesgm1 = datesgm[8:10]
@@ -218,16 +215,16 @@ class OutputWriter:
                         
                         if (c.weekday() == 5 or c.weekday() == 6) and sitename.find('T2_') == 0: # id. weekends
                             if state != " " :
-                                if self.matrices.allInfo[sitename][datesgm][met].has_key('URL') and self.matrices.allInfo[sitename][datesgm][met]['URL'] != ' ' :
-                                    stateurl=self.matrices.allInfo[sitename][datesgm][met]['URL']
+                                if self.matrices.columnValues[sitename][datesgm][met].has_key('URL') and self.matrices.columnValues[sitename][datesgm][met]['URL'] != ' ' :
+                                    stateurl=self.matrices.columnValues[sitename][datesgm][met]['URL']
                                     fileHandle.write("<td width=\"" + dayw + "\" bgcolor=grey><a href=\""+stateurl+"\">"+"<div id=\"metrics2\">" + state + "</div></a></td>\n")
                                 else:
                                     fileHandle.write("<td width=\"" + dayw + "\" bgcolor=grey><div id=\"metrics2\">" + state + "</div></td>\n")
                             else:
                                     fileHandle.write("<td width=\"" + dayw + "\" bgcolor=white><div id=\"metrics2\">" + state + "</div></td>\n")
                         else:
-                            if self.matrices.allInfo[sitename][datesgm][met].has_key('URL') and self.matrices.allInfo[sitename][datesgm][met]['URL'] != ' ' :
-                                stateurl=self.matrices.allInfo[sitename][datesgm][met]['URL']
+                            if self.matrices.columnValues[sitename][datesgm][met].has_key('URL') and self.matrices.columnValues[sitename][datesgm][met]['URL'] != ' ' :
+                                stateurl=self.matrices.columnValues[sitename][datesgm][met]['URL']
                                 fileHandle.write("<td width=\"" + dayw + "\" bgcolor=" + colorst + "><a href=\""+stateurl+"\">"+"<div id=\"metrics2\">" + state + "</div></a></td>\n")
                             else:
                                 fileHandle.write("<td width=\"" + dayw + "\" bgcolor=" + colorst + "><div id=\"metrics2\">" + state + "</div></td>\n")
@@ -729,7 +726,7 @@ class OutputWriter:
         prog = ProgressBar(0, 100, 77)
         indmetrics = self.cinfo.metorder.keys()
         indmetrics.sort()
-        sites = self.matrices.allInfo.keys()
+        sites = self.matrices.columnValues.keys()
         sites.sort()
         for sitename in sites:
             prog.increment(100./3.)
@@ -739,13 +736,13 @@ class OutputWriter:
                 if self.SkipSiteOutput(sitename): continue
                 for metnumber in indmetrics:
                     met = self.cinfo.metorder[metnumber]
-                    if not self.matrices.allInfo[sitename][dat].has_key(met) or met == 'IsSiteInSiteDB': continue # ignore 
+                    if not self.matrices.columnValues[sitename][dat].has_key(met) or met == 'IsSiteInSiteDB': continue # ignore 
     
-                    if self.matrices.allInfo[sitename][dat][met].has_key('URL'):
-                        url = self.matrices.allInfo[sitename][dat][met]['URL']
+                    if self.matrices.columnValues[sitename][dat][met].has_key('URL'):
+                        url = self.matrices.columnValues[sitename][dat][met]['URL']
                     else:
                         url = "-"
-                    print dat, sitename, met, self.matrices.allInfo[sitename][dat][met]['Status'], self.matrices.allInfo[sitename][dat][met]['Color'],url
+                    print dat, sitename, met, self.matrices.columnValues[sitename][dat][met]['Status'], self.matrices.columnValues[sitename][dat][met]['Color'],url
     
         prog.finish()
     
@@ -765,14 +762,14 @@ class OutputWriter:
                     if os.path.isfile(slinkhtml): os.remove(slinkhtml)
                     os.symlink(os.path.split(filepng)[1],slinkhtml)
     
-    # SiteCommMatrix --> allInfo
+    # SiteCommMatrix --> columnValues
     # SiteCommMatrixT1T2 --> dailyMetrics
     # SiteCommGlobalMatrix --> readiValues
     # SiteCommStatistics --> stats
     def DumpPickleFiles(self):
         file = self.asciiOutDir + "/SiteCommMatrix.pck"
         file1 = open(file, "w")
-        pickle.dump(self.matrices.allInfo, file1)
+        pickle.dump(self.matrices.columnValues, file1)
         file1.close()
     
         file = self.asciiOutDir + "/SiteCommMatrixT1T2.pck"

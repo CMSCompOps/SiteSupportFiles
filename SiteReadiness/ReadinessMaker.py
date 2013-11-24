@@ -5,36 +5,51 @@ from optparse import OptionParser
 # local imports
 from ProgressBar import ProgressBar
 
+class Matrices:
+    # renaming scheme:
+    # SiteCommMatrix --> columnValues: values for each column for each site
+    # SiteCommMatrixT1T2 --> dailyMetrics: values for the 'Daily Metric'
+    # SiteCommGlobalMatrix --> readiValues: actual 'Site Readiness' values
+    # SiteCommStatistics --> stats: summary statistics
+    def __init__(self):
+        self.xmlInfo      = {}
+        self.columnValues = {}
+        self.dailyMetrics = {}
+        self.readiValues  = {}
+        self.stats        = {}
+        # note: self.matrices.columnValues is a summary of self.matrices.xmlInfo, with indices site name, time, column and values status, color, url, and validity
+        # self.matrices.columnValues[site name][time][column] = [status, color, url, validity]
+
 class ReadinessMaker:
-    def __init__(self, cinfo, tinfo):
+    def __init__(self, options, cinfo, tinfo):
+        self.options = options
         self.cinfo = cinfo
         self.tinfo = tinfo
-        self.sites = {}
-        self.SiteCommMatrix = {}
-        self.SiteCommGlobalMatrix = {}
-        self.SiteCommMatrixT1T2 = {}
-        self.SiteCommStatistics = {}
-        
-    def SSBXMLParser(self, sites, urls):
+        self.matrices = Matrices()
+
+    #----------------------------------------------------------------------------------------
+    #        
+    def ParseXML(self):
+        print "\nObtaining XML info from SSB 'commission' view\n"
         prog = ProgressBar(0, 100, 77)
+
         xmlCacheDir = self.options.path_out + "/INPUTxmls"
         if not os.path.exists(xmlCacheDir):
             os.makedirs(xmlCacheDir)
-        ColumnItems = urls.keys()
+        ColumnItems = self.cinfo.urls.keys()
         ColumnItems.sort()
         for col in ColumnItems:
             prog.increment(100./len(ColumnItems))
-    
-            url = urls[col]
-            fileN = xmlCacheDir + "/" + col + ".xml"
+            url = self.cinfo.urls[col]
+            xmlFile = xmlCacheDir + "/" + col + ".xml"
             if self.options.xml == 'false' and not os.path.exists(xmlCacheDir):
                 print "\nWARNING: you cannot re-use the XML files as the files were not obtained before. Obtaining them...\n"
                 self.options.xml = 'true'
             if self.options.xml == 'true': # download xml file if requested
                 print "Column %s - Getting the url %s" % (col, url)
-                os.system("curl -s -H 'Accept: text/xml'  '%s' > %s" % (url,fileN))
+                os.system("curl -s -H 'Accept: text/xml'  '%s' > %s" % (url,xmlFile))
         
-            f = file(fileN,'r') # read xml file that was either just written, or was written in the previous run
+            f = file(xmlFile,'r') # read xml file that was either just written, or was written in the previous run
             t = xml.dom.minidom.parse(f)
             f.close()
     
@@ -47,39 +62,33 @@ class ReadinessMaker:
                         else:
                             s = ""
                         info[option] = s
-    
-                if self.options.oneSite != "" and info['VOName'].find(self.options.oneSite) != 0: continue
-    
-                if info['VOName'].find("T3_FR-IPNL") == 0: continue
-                if info['VOName'].find("T2_TR_ULAKBIM") == 0: continue
-                
-                if not sites.has_key(info['VOName']): # if site not already in dict, add an empty dict for it
-                    sites[info['VOName']] = {}
-                if not sites[info['VOName']].has_key(col): # if site entry doesn't already have this column, add an empty dict for this column
-                    sites[info['VOName']][col] = {}
-                sites[info['VOName']][col][info['Time']] = info # set the actual values
-    
-                # Correct information from JobRobot --> 100%(600) -> 100% (example)
-                if col=="JobRobotDB" or col=="HammerCloud":
-                    if sites[info['VOName']][col][info['Time']]['Status'] == "n/a":
-                        sites[info['VOName']][col][info['Time']]['Status']="n/a"
-                    else:
-                        tmp=int(float(sites[info['VOName']][col][info['Time']]['Status']))
-                        sites[info['VOName']][col][info['Time']]['Status']=str(tmp)
-    
-                if col=="JobRobot" or col == "JobRobotDB" or col=="HammerCloud":
-                    tmp=sites[info['VOName']][col][info['Time']]['Status']
-                    tmp2=tmp.split("(")[0]
-                    if not tmp2.find("%") == 0 and not tmp2.find("n/a") == 0: tmp2+="%"
-                    sites[info['VOName']][col][info['Time']]['Status']=tmp2
-                if col=="SAMAvailability" or col=="SAMNagiosAvailability" or col=="SUMAvailability":
-                    tmp=sites[info['VOName']][col][info['Time']]['Status']
-                    if col=="SUMAvailability": tmp=str(int(round(float(tmp))))
-                    if not tmp.find("%") == 0: tmp+="%"
-                    sites[info['VOName']][col][info['Time']]['Status']=tmp
+
+                voname = info['VOName']
+                time = info['Time']
+                xmlMatrix = self.matrices.xmlInfo
+                if self.options.oneSite != "" and voname.find(self.options.oneSite) != 0: continue
+                if not xmlMatrix.has_key(voname): # if site not already in dict, add an empty dict for it
+                    xmlMatrix[voname] = {}
+                if not xmlMatrix[voname].has_key(col): # if site entry doesn't already have this column, add an empty dict for this column
+                    xmlMatrix[voname][col] = {}
+                xmlMatrix[voname][col][time] = info # set the actual values
+
+                # Correct some of the strings
+                value = xmlMatrix[voname][col][time]['Status']
+                if col=="HammerCloud" and value != "n/a":
+                    value = str(int(float(value)))
+                    if value.find("%") != 0:
+                        value += "%"
+                elif col=="SUMAvailability":
+                    value = str(int(round(float(value))))
+                    if value.find("%") != 0:
+                        value += "%"
+                xmlMatrix[voname][col][time]['Status'] = value
     
         prog.finish()
     
+    #----------------------------------------------------------------------------------------
+    #        
     def ShiftDayForMetric(self, datestamp, col):
         if col == "JobRobot" or col=="JobRobotDB" or col=="HammerCloud" or col == "SAMAvailability" or col == "SAMNagiosAvailability" or col == "SUMAvailability" or col.find("Good")==0:
             delta = datetime.timedelta(1)
@@ -88,38 +97,40 @@ class ReadinessMaker:
         else:
             return datestamp.strftime("%Y-%m-%d")
         
-    def GetDailyMetricStatus(self, sites, SiteCommMatrix, colorCodes, urls, cinfo, tinfo):
+    #----------------------------------------------------------------------------------------
+    #        
+    def FillSummaryMatrix(self):
+        print "\nExtracting Column Info for CMS sites\n"
         prog = ProgressBar(0, 100, 77)
-        for sitename in sites:
-            prog.increment(100./len(sites))
-            if not SiteCommMatrix.has_key(sitename): # add site if not already there
-                SiteCommMatrix[sitename]={}
-    
-            for col in urls:
-                if not sites[sitename].has_key(col) or col == 'Downtimes_sam' or col == 'Downtimes_top':
+        for sitename in self.matrices.xmlInfo:
+            prog.increment(100./len(self.matrices.xmlInfo))
+            if not self.matrices.columnValues.has_key(sitename): # add site if not already there
+                self.matrices.columnValues[sitename] = {}
+            for col in self.cinfo.urls:
+                if not self.matrices.xmlInfo[sitename].has_key(col) or col == 'Downtimes_top':
                     continue
     
                 # set to null (default) values
-                for i in range(0,self.cinfo.days+1):
+                for i in range(0, self.cinfo.days+1):
                     delta = datetime.timedelta(self.cinfo.days-i)
                     dayloop = self.tinfo.today - delta
                     dayloopstamp = dayloop.strftime("%Y-%m-%d")
-                    if not SiteCommMatrix[sitename].has_key(dayloopstamp):
-                        SiteCommMatrix[sitename][dayloopstamp] = {}
-                    if not SiteCommMatrix[sitename][dayloopstamp].has_key(col):
-                        SiteCommMatrix[sitename][dayloopstamp][col] = {}
+                    if not self.matrices.columnValues[sitename].has_key(dayloopstamp):
+                        self.matrices.columnValues[sitename][dayloopstamp] = {}
+                    if not self.matrices.columnValues[sitename][dayloopstamp].has_key(col):
+                        self.matrices.columnValues[sitename][dayloopstamp][col] = {}
                     nullValues = {}
                     nullValues['Status'] = 'n/a'
                     nullValues['Color'] = 'white'
                     nullValues['URL'] = ' '
                     nullValues['validity'] = 0
-                    SiteCommMatrix[sitename][dayloopstamp][col] = nullValues
+                    self.matrices.columnValues[sitename][dayloopstamp][col] = nullValues
     
-                items = sites[sitename][col].keys()
+                items = self.matrices.xmlInfo[sitename][col].keys()
                 items.sort()
                 for coldate in items: # loop over each time/date combination
-                    xmltime = datetime.datetime(*time.strptime(sites[sitename][col][coldate]['Time'], "%Y-%m-%d %H:%M:%S")[0:6])
-                    xmlendtime = datetime.datetime(*time.strptime(sites[sitename][col][coldate]['EndTime'], "%Y-%m-%d %H:%M:%S")[0:6])
+                    xmltime = datetime.datetime(*time.strptime(self.matrices.xmlInfo[sitename][col][coldate]['Time'], "%Y-%m-%d %H:%M:%S")[0:6])
+                    xmlendtime = datetime.datetime(*time.strptime(self.matrices.xmlInfo[sitename][col][coldate]['EndTime'], "%Y-%m-%d %H:%M:%S")[0:6])
     
                     startxmldatetmp = xmltime.strftime("%Y-%m-%d 00:00:00")
                     startxmldate = datetime.datetime(*time.strptime(startxmldatetmp, "%Y-%m-%d %H:%M:%S")[0:6])
@@ -133,11 +144,9 @@ class ReadinessMaker:
                         dayloopstamp = dayloop.strftime("%Y-%m-%d")
                         dayloopstamp2 = dayloop.strftime("%Y-%m-%d 00:00:00")
                         looptime = datetime.datetime(*time.strptime(dayloopstamp2, "%Y-%m-%d %H:%M:%S")[0:6])
-    
                         if dayloop > self.tinfo.today:
                             EndTXML = False
                             continue
-                            
                         diff1  = xmltime-looptime
                         diff1s = (diff1.days*86400+diff1.seconds)
                         diff2  = xmlendtime-looptime
@@ -154,44 +163,44 @@ class ReadinessMaker:
                             EndTXML=False
                             continue
     
-                        if colorCodes[col][sites[sitename][col][coldate]['COLOR']] == "green":
-                            status=sites[sitename][col][coldate]['Status']
-                            statusu=sites[sitename][col][coldate]['URL']
+                        if self.cinfo.colorCodes[col][self.matrices.xmlInfo[sitename][col][coldate]['COLOR']] == "green":
+                            status=self.matrices.xmlInfo[sitename][col][coldate]['Status']
+                            statusu=self.matrices.xmlInfo[sitename][col][coldate]['URL']
                             statusc='green'
-                            if sites[sitename][col][coldate]['Status']=="pend":
+                            if self.matrices.xmlInfo[sitename][col][coldate]['Status']=="pend":
                                 statusc='orange'
                                 status='-'
-                        elif colorCodes[col][sites[sitename][col][coldate]['COLOR']] == "white":
+                        elif self.cinfo.colorCodes[col][self.matrices.xmlInfo[sitename][col][coldate]['COLOR']] == "white":
                             statusu=' '
                             status='n/a'
                             statusc='white'
-                        elif colorCodes[col][sites[sitename][col][coldate]['COLOR']] == "red":
-                            status=sites[sitename][col][coldate]['Status']
-                            statusu=sites[sitename][col][coldate]['URL']
+                        elif self.cinfo.colorCodes[col][self.matrices.xmlInfo[sitename][col][coldate]['COLOR']] == "red":
+                            status=self.matrices.xmlInfo[sitename][col][coldate]['Status']
+                            statusu=self.matrices.xmlInfo[sitename][col][coldate]['URL']
                             statusc='red'
                         else:
                             status='???'
                             statusu='???'
                             statusc='white'
     
-                        dayloopstamp3 = ShiftDayForMetric(dayloop,col)
+                        dayloopstamp3 = self.ShiftDayForMetric(dayloop,col)
                         todayst = date(int(self.tinfo.todaystamp[0:4]),int(self.tinfo.todaystamp[5:7]),int(self.tinfo.todaystamp[8:10]))
                         dayloop3 = date(int(dayloopstamp3[0:4]),int(dayloopstamp3[5:7]),int(dayloopstamp3[8:10]))
     
                         if abs((dayloop3-todayst).days) > self.cinfo.days:
                             continue
     
-                        # set the actual values in SiteCommMatrix
+                        # set the actual values in self.matrices.columnValues
                         infocol = {}
                         infocol['Status'] = status
                         infocol['Color'] = statusc
                         infocol['URL'] = statusu
                         infocol['validity'] = validity
-                        if SiteCommMatrix[sitename][dayloopstamp3][col].has_key('validity'):
-                            if validity > SiteCommMatrix[sitename][dayloopstamp3][col]['validity']:
-                                SiteCommMatrix[sitename][dayloopstamp3][col] = infocol
+                        if self.matrices.columnValues[sitename][dayloopstamp3][col].has_key('validity'):
+                            if validity > self.matrices.columnValues[sitename][dayloopstamp3][col]['validity']:
+                                self.matrices.columnValues[sitename][dayloopstamp3][col] = infocol
                         else:
-                            SiteCommMatrix[sitename][dayloopstamp3][col] = infocol
+                            self.matrices.columnValues[sitename][dayloopstamp3][col] = infocol
                                     
                         if dayloopstamp == self.tinfo.todaystamp:
                             infocol = {}
@@ -199,50 +208,49 @@ class ReadinessMaker:
                             infocol['Color'] = 'white'
                             infocol['URL'] = ' '
                             infocol['validity'] = '0'                       
-                            SiteCommMatrix[sitename][dayloopstamp][col] = infocol
+                            self.matrices.columnValues[sitename][dayloopstamp][col] = infocol
     
         prog.finish()
     
-    def GetDailyScheduledDowntimeTopologyStatus(self, sites, SiteCommMatrix, colorCodes, urls, cinfo, tinfo):
+    #----------------------------------------------------------------------------------------
+    #        
+    def GetDowntimes(self):
+        print "\nExtracting Scheduled Downtime Topology Daily Metrics for CMS sites\n"
         # Leer Downtimes Topology (por ahora uso Time y EndTime para decidir cuanto duran los Downtimes)
         # por defecto todos los dias son Ok, y uso Time y EndTime para asignar los Downtimes.
         prog = ProgressBar(0, 100, 77)
-        for sitename in sites:
-            prog.increment(100./len(sites))
-            if not SiteCommMatrix.has_key(sitename): # add dict for site
-                SiteCommMatrix[sitename]={}
-            
-            for col in urls: # loop over columns
+        for sitename in self.matrices.xmlInfo:
+            prog.increment(100./len(self.matrices.xmlInfo))
+            if not self.matrices.columnValues.has_key(sitename): # add dict for site
+                self.matrices.columnValues[sitename]={}
+            for col in self.cinfo.urls: # loop over columns
                 if col != "Downtimes_top":
                     continue
                 infocol = {}
-    
-                if not sites[sitename].has_key(col):
-                    sites[sitename][col] = {}
-    
+                if not self.matrices.xmlInfo[sitename].has_key(col):
+                    self.matrices.xmlInfo[sitename][col] = {}
                 # set downtime metric to green by default
                 for i in range(0,self.cinfo.days+1):
                     delta = datetime.timedelta(self.cinfo.days-i);
                     dayloop = self.tinfo.today - delta
                     dayloopstamp = dayloop.strftime("%Y-%m-%d")
-    
-                    if not SiteCommMatrix[sitename].has_key(dayloopstamp):
-                        SiteCommMatrix[sitename][dayloopstamp] = {}
-    
+
+                    if not self.matrices.columnValues[sitename].has_key(dayloopstamp):
+                        self.matrices.columnValues[sitename][dayloopstamp] = {}
                     infocol['Status'] = "Up"
                     infocol['Color'] = "green"
                     infocol['URL'] = ' ' 
-                    SiteCommMatrix[sitename][dayloopstamp][col] = infocol
+                    self.matrices.columnValues[sitename][dayloopstamp][col] = infocol
     
-                items = sites[sitename][col].keys()
+                items = self.matrices.xmlInfo[sitename][col].keys()
                 items.sort()
                 for stdate in items:
-                    colorTmp = colorCodes[col][sites[sitename][col][stdate]['COLOR']] # color taken from sites
+                    colorTmp = self.cinfo.colorCodes[col][self.matrices.xmlInfo[sitename][col][stdate]['COLOR']] # color taken from self.matrices.xmlInfo
                     if colorTmp == "white" or  colorTmp == "green": # if they're ok, they don't need to be corrected for downtimes
                         continue
                     sttdate = stdate[0:stdate.find(" ")]
-                    enddate = sites[sitename][col][stdate]['EndTime'][0:sites[sitename][col][stdate]['EndTime'].find(" ")]
-                    cl = sites[sitename][col][stdate]['COLOR']
+                    enddate = self.matrices.xmlInfo[sitename][col][stdate]['EndTime'][0:self.matrices.xmlInfo[sitename][col][stdate]['EndTime'].find(" ")]
+                    cl = self.matrices.xmlInfo[sitename][col][stdate]['COLOR']
     
                     for i in range(0,self.cinfo.days+1):
                         delta = datetime.timedelta(self.cinfo.days-i);
@@ -258,36 +266,36 @@ class ReadinessMaker:
                                 dayloopstamp  = dayloop.strftime("%Y-%m-%d")
     
                                 # I'm guessing that this is supposed skip brown entries, but the first and last if statements seem to have typos.
-                                if SiteCommMatrix[sitename].has_key(col):
-                                    if SiteCommMatrix[sitename][col].has_key(dayloopstamp):
-                                        if SiteCommMatrix[sitename][col][dayloopstamp].has_key('Color'):
-                                            if SiteCommMatrix[sitename][col][dayloopstamp].has_key('Color') == 'brown':
+                                if self.matrices.columnValues[sitename].has_key(col):
+                                    if self.matrices.columnValues[sitename][col].has_key(dayloopstamp):
+                                        if self.matrices.columnValues[sitename][col][dayloopstamp].has_key('Color'):
+                                            if self.matrices.columnValues[sitename][col][dayloopstamp].has_key('Color') == 'brown':
                                                 kk+=1
                                                 continue
     
-                                # get downtime info from sites and put it into SiteCommMatrix
+                                # get downtime info from sites and put it into self.matrices.columnValues
                                 values = {}
                                 if colorTmp == 'brown':
                                     values['Color'] = 'brown'
                                     values['Status'] = 'SD'
-                                    values['URL'] = sites[sitename][col][stdate]['URL']
+                                    values['URL'] = self.matrices.xmlInfo[sitename][col][stdate]['URL']
                                 if colorTmp == 'grey':
-                                    if sites[sitename][col][stdate]['Status'].find("OUTAGE UNSCHEDULED") == 0:
+                                    if self.matrices.xmlInfo[sitename][col][stdate]['Status'].find("OUTAGE UNSCHEDULED") == 0:
                                         values['Color'] = 'silver'
                                         values['Status'] = 'UD'
-                                        values['URL'] = sites[sitename][col][stdate]['URL']
+                                        values['URL'] = self.matrices.xmlInfo[sitename][col][stdate]['URL']
                                     else:
                                         values['Color'] = 'yellow'
                                         values['Status'] = '~'
-                                        values['URL'] = sites[sitename][col][stdate]['URL']
+                                        values['URL'] = self.matrices.xmlInfo[sitename][col][stdate]['URL']
                                 if colorTmp == 'yellow':
                                     values['Color'] = 'yellow'
                                     values['Status'] = '~'
-                                    values['URL'] = sites[sitename][col][stdate]['URL']
+                                    values['URL'] = self.matrices.xmlInfo[sitename][col][stdate]['URL']
                                 
                                 if dayloop > self.tinfo.today: break # ignore future downtimes
     
-                                SiteCommMatrix[sitename][dayloopstamp][col] = values
+                                self.matrices.columnValues[sitename][dayloopstamp][col] = values
     
                                 kk+=1
     
@@ -298,114 +306,81 @@ class ReadinessMaker:
                 nullVals['Status'] = ' '
                 nullVals['URL'] = ' '
                 nullVals['Color'] = 'white'
-                SiteCommMatrix[sitename][self.tinfo.todaystamp][col] = nullVals
+                self.matrices.columnValues[sitename][self.tinfo.todaystamp][col] = nullVals
     
         prog.finish()
     
-    def GetCriteriasList(self, sitename, criteria):
+    #----------------------------------------------------------------------------------------
+    #        
+    def GetCriteriasList(self, sitename):
         # return list of columns (criteria) that apply to this site, based on its tier
         tier = sitename.split("_")[0]   
-        return criteria[tier]
+        return self.cinfo.criteria[tier]
     
-    def EvaluateDailyStatus(self, SiteCommMatrix, SiteCommMatrixT1T2, criteria, tinfo):
-        # set value for the 'Daily Metric' column in SiteCommMatrixT1T2
+    #----------------------------------------------------------------------------------------
+    #        
+    def EvaluateDailyMetric(self):
+        print "\nEvaluating Daily Status\n"
+        # set value for the 'Daily Metric' column in self.matrices.dailyMetrics
         prog = ProgressBar(0, 100, 77)
-        for sitename in SiteCommMatrix:
-            prog.increment(100./len(SiteCommMatrix))
-    
-            SiteCommMatrixT1T2[sitename] = {}
-            items = SiteCommMatrix[sitename].keys()
+        for sitename in self.matrices.columnValues:
+            prog.increment(100./len(self.matrices.columnValues))
+            self.matrices.dailyMetrics[sitename] = {}
+            items = self.matrices.columnValues[sitename].keys()
             items.sort()
-    
             status  = ' '
             for day in items:
                 status = 'O'
-                for crit in GetCriteriasList(sitename, criteria): # loop through the columns (criteria) that apply to this site
-                    if not SiteCommMatrix[sitename][day].has_key(crit):
-                        infocol3 = {}
-                        infocol3['Status'] = 'n/a'
-                        infocol3['Color'] = 'white'
-                        SiteCommMatrix[sitename][day][crit] = infocol3
-    
-                    if SiteCommMatrix[sitename][day][crit]['Color'] == 'red':
+                for crit in self.GetCriteriasList(sitename): # loop through the columns (criteria) that apply to this site
+                    if not self.matrices.columnValues[sitename][day].has_key(crit):
+                        info = {}
+                        info['Status'] = 'n/a'
+                        info['Color'] = 'white'
+                        self.matrices.columnValues[sitename][day][crit] = info
+                    if self.matrices.columnValues[sitename][day][crit]['Color'] == 'red':
                         status = 'E'
     
-                if SiteCommMatrix[sitename][day]['Downtimes_top']['Color'] == 'brown':
+                if self.matrices.columnValues[sitename][day]['Downtimes_top']['Color'] == 'brown':
                     status = 'SD'
     
                 # exclude sites that are not in SiteDB
                 testdate = date(int(day[0:4]),int(day[5:7]),int(day[8:10]))
-                sitedbtimeint = testdate - date(2009,11,03) # magic number - no idea where it comes from. Something to do with site db, of course
+                sitedbtimeint = testdate - date(2009,11,03) # magic number - no idea where it comes from.
                 if sitedbtimeint.days >= 0:
-                    if SiteCommMatrix[sitename][day].has_key('IsSiteInSiteDB'):
-                        if SiteCommMatrix[sitename][day]['IsSiteInSiteDB']['Color'] == 'white':
+                    if self.matrices.columnValues[sitename][day].has_key('IsSiteInSiteDB'):
+                        if self.matrices.columnValues[sitename][day]['IsSiteInSiteDB']['Color'] == 'white':
                             status = 'n/a'
     
                 if day == self.tinfo.todaystamp:
                     status = ' '
     
-                SiteCommMatrixT1T2[sitename][day] = status
+                self.matrices.dailyMetrics[sitename][day] = status
     
         prog.finish()
-    
-    def CorrectGlobalMatrix(self, sitename,day,value):
-    
-        if sitename.find('T0_CH_CERN') == 0: 
-            return 'n/a*'
-        if sitename.find('_CH_CAF') == 0: 
-            return 'n/a*'
-        
-        if sitename == 'T2_PL_Cracow':
-            return 'n/a*'
-    
-        if sitename == 'T1_DE_FZK':
-            thedate=date(int(day[0:4]),int(day[5:7]),int(day[8:10]))
-            fzk_notvalidsince=date(2009,9,25)
-    
-            if (thedate-fzk_notvalidsince).days > 0:
-                return 'n/a*'
-            
-        if sitename == 'T1_DE_KIT':
-            thedate=date(int(day[0:4]),int(day[5:7]),int(day[8:10]))
-            kit_validsince=date(2009,9,25)
-    
-            if (thedate-kit_validsince).days < 0:
-                return 'n/a*'
-            
-        return value
                             
-    def EvaluateSiteReadiness(self, SiteCommMatrixT1T2, SiteCommGlobalMatrix, urls, daysSC, cinfo, tinfo):
-        # fill SiteCommGlobalMatrix with actual readiness values
+    #----------------------------------------------------------------------------------------
+    #        
+    def EvaluateSiteReadiness(self):
+        print "\nEvaluating Site Readiness\n"
         prog = ProgressBar(0, 100, 77)
-        sitesit = SiteCommMatrixT1T2.keys()
+        sitesit = self.matrices.dailyMetrics.keys()
         sitesit.sort()
         for sitename in sitesit:
             prog.increment(100./len(sitesit))
-            if not SiteCommGlobalMatrix.has_key(sitename):
-                SiteCommGlobalMatrix[sitename]={}
-    
+            if not self.matrices.readiValues.has_key(sitename):
+                self.matrices.readiValues[sitename]={}
             tier = sitename.split("_")[0]
-            
-            for i in range(0,self.cinfo.days-daysSC):
-                delta = datetime.timedelta(i)
-                dayloop = self.tinfo.today - delta
+            for i in range(0, self.cinfo.days-self.cinfo.daysSC):
+                dayloop = self.tinfo.today - datetime.timedelta(i)
                 dayloopstamp = dayloop.strftime("%Y-%m-%d")
-                dm1 = datetime.timedelta(1)
-                dayloopm1 = dayloop-dm1
-                dayloopstampm1 = dayloopm1.strftime("%Y-%m-%d")
-                dm2 = datetime.timedelta(2)
-                dayloopm2 = dayloop-dm2
-                dayloopstampm2 = dayloopm2.strftime("%Y-%m-%d")
-                
+                dayloopstampm1 = (dayloop-datetime.timedelta(1)).strftime("%Y-%m-%d")
+                dayloopstampm2 = (dayloop-datetime.timedelta(2)).strftime("%Y-%m-%d")
                 statusE = 0
-                for j in range(0,daysSC):
-                    dd = datetime.timedelta(j);
-                    dayloop2 = dayloop-dd
+                for j in range(0,self.cinfo.daysSC):
+                    dayloop2 = dayloop - datetime.timedelta(j);
                     dayloopstamp2 = dayloop2.strftime("%Y-%m-%d")
-    
                     dayofweek2 = dayloop2.weekday()
-                    
-                    if SiteCommMatrixT1T2[sitename][dayloopstamp2] == 'E': # Daily Metric value
+                    if self.matrices.dailyMetrics[sitename][dayloopstamp2] == 'E': # Daily Metric value
                         if ( tier == "T2" or tier == "T3") and (dayofweek2 == 5 or dayofweek2 == 6):
                             if not self.options.t2weekends: # skip Errors on weekends for T2s
                                 continue
@@ -416,101 +391,53 @@ class ReadinessMaker:
                 if statusE > 2:
                     status="NR"
                     colorst="red"
-                if SiteCommMatrixT1T2[sitename][dayloopstamp] == 'E' and statusE <= 2 :
+                if self.matrices.dailyMetrics[sitename][dayloopstamp] == 'E' and statusE <= 2 :
                     status="W"
                     colorst="yellow"
-                if SiteCommMatrixT1T2[sitename][dayloopstamp] == 'O' and statusE <= 2 :
+                if self.matrices.dailyMetrics[sitename][dayloopstamp] == 'O' and statusE <= 2 :
                     status="R"
                     colorst="green"
-                if SiteCommMatrixT1T2[sitename][dayloopstamp] == 'O' and SiteCommMatrixT1T2[sitename][dayloopstampm1] == 'O':
+                if self.matrices.dailyMetrics[sitename][dayloopstamp] == 'O' and self.matrices.dailyMetrics[sitename][dayloopstampm1] == 'O':
                     status="R"
                     colorst="green"
-                if SiteCommMatrixT1T2[sitename][dayloopstamp] == 'SD':
+                if self.matrices.dailyMetrics[sitename][dayloopstamp] == 'SD':
                     status='SD'
                     colorst="brown"
-            
-                SiteCommGlobalMatrix[sitename][dayloopstamp] = status # set actual SR value
+                self.matrices.readiValues[sitename][dayloopstamp] = status # set actual SR value
     
-            if ( tier == "T2" or tier == "T3") :
-                for i in range(0,self.cinfo.days-daysSC):
-                    d = datetime.timedelta(i);
-                    dsc = datetime.timedelta(self.cinfo.days-daysSC-1);
-                    dayloop = self.tinfo.today - dsc + d
+            if tier=="T2" or tier=="T3":
+                for i in range(0, self.cinfo.days-self.cinfo.daysSC):
+                    dsc = datetime.timedelta(self.cinfo.days - self.cinfo.daysSC - 1);
+                    dayloop = self.tinfo.today - dsc + datetime.timedelta(i)
                     dayofweek = dayloop.weekday()
                     dayloopstamp = dayloop.strftime("%Y-%m-%d")
-                    dm1 = datetime.timedelta(1)
-                    dayloopm1 = dayloop-dm1
-                    dayloopstampm1 = dayloopm1.strftime("%Y-%m-%d")
-    
-                    if SiteCommMatrixT1T2[sitename][dayloopstamp] == 'E':
+                    dayloopstampm1 = (dayloop - datetime.timedelta(1)).strftime("%Y-%m-%d")
+                    if self.matrices.dailyMetrics[sitename][dayloopstamp] == 'E':
                         if dayofweek == 5 or dayofweek == 6: # id. weekends
                             if not self.options.t2weekends: # skip Errors on weekends for T2s
                                 if i == 0 or i == 1:
-                                    SiteCommGlobalMatrix[sitename][dayloopstamp] == 'R'
+                                    self.matrices.readiValues[sitename][dayloopstamp] == 'R'
                                     continue
-                                if SiteCommGlobalMatrix[sitename][dayloopstampm1] == 'SD':
-                                    SiteCommGlobalMatrix[sitename][dayloopstamp] = 'R'
+                                if self.matrices.readiValues[sitename][dayloopstampm1] == 'SD':
+                                    self.matrices.readiValues[sitename][dayloopstamp] = 'R'
                                 else:
-                                    SiteCommGlobalMatrix[sitename][dayloopstamp] = SiteCommGlobalMatrix[sitename][dayloopstampm1]
+                                    self.matrices.readiValues[sitename][dayloopstamp] = self.matrices.readiValues[sitename][dayloopstampm1]
                             
         prog.finish()
     
         # put in blank current day
-        for sitename in SiteCommMatrixT1T2:
-            for col in urls:
-                if SiteCommMatrix[sitename][self.tinfo.todaystamp].has_key(col):
-                    SiteCommMatrix[sitename][self.tinfo.todaystamp][col]['Status'] = ' '
-                    SiteCommMatrix[sitename][self.tinfo.todaystamp][col]['Color'] = 'white'
-                    SiteCommGlobalMatrix[sitename][self.tinfo.todaystamp] = ' '
+        for sitename in self.matrices.dailyMetrics:
+            for col in self.cinfo.urls:
+                if self.matrices.columnValues[sitename][self.tinfo.todaystamp].has_key(col):
+                    self.matrices.columnValues[sitename][self.tinfo.todaystamp][col]['Status'] = ' '
+                    self.matrices.columnValues[sitename][self.tinfo.todaystamp][col]['Color'] = 'white'
+                    self.matrices.readiValues[sitename][self.tinfo.todaystamp] = ' '
     
-        # Correct some known sites metrics
-        for sitename in SiteCommGlobalMatrix:
-            for dt in SiteCommGlobalMatrix[sitename]:
-                SiteCommGlobalMatrix[sitename][dt] = CorrectGlobalMatrix(sitename, dt, SiteCommGlobalMatrix[sitename][dt])
-        for sitename in SiteCommMatrixT1T2:
-            for dt in SiteCommMatrixT1T2[sitename]:
-                SiteCommMatrixT1T2[sitename][dt] = CorrectGlobalMatrix(sitename, dt, SiteCommMatrixT1T2[sitename][dt])
-
-
-cinfo = ColumnInfo()
-tinfo = TimeInfo()
-sites={}
-SiteCommMatrix={}
-SiteCommGlobalMatrix = {}
-SiteCommMatrixT1T2 = {}
-SiteCommStatistics = {}
-
-# note: SiteCommMatrix is a summary of sites, with indices site name, time, column and values status, color, url, and validity
-# SiteCommMatrix[site name][time][column] = [status, color, url, validity]
-
-print "\nObtaining XML info from SSB 'commission' view\n"
-SSBXMLParser(sites, cinfo.urls) # fill all info into sites
-
-print "\nExtracting Daily Metrics for CMS sites\n"
-GetDailyMetricStatus(sites, SiteCommMatrix, cinfo.colorCodes, cinfo.urls, cinfo, tinfo) # fill SiteCommMatrix with info from sites
-
-print "\nExtracting Scheduled Downtime Topology Daily Metrics for CMS sites\n"
-GetDailyScheduledDowntimeTopologyStatus(sites, SiteCommMatrix, cinfo.colorCodes, cinfo.urls, cinfo, tinfo) # set downtime values in SiteCommMatrix using info from sites
-
-print "\nEvaluating Daily Status\n"
-EvaluateDailyStatus(SiteCommMatrix, SiteCommMatrixT1T2, cinfo.criteria, tinfo) # set value for the 'Daily Metric' column in SiteCommMatrixT1T2
-
-print "\nEvaluating Site Readiness\n"
-EvaluateSiteReadiness(SiteCommMatrixT1T2, SiteCommGlobalMatrix, cinfo.urls, cinfo.daysSC, cinfo, tinfo) # set readiness values in SiteCommGlobalMatrix
-
-# SiteCommMatrix --> allInfo
-# SiteCommMatrixT1T2 --> dailyMetrics
-# SiteCommGlobalMatrix --> readiValues
-# SiteCommStatistics --> stats
-class Matrices:
-    def __init__(self, allInfo, dailyMetrics, readiValues, stats):
-        self.allInfo      = allInfo
-        self.dailyMetrics = dailyMetrics
-        self.readiValues  = readiValues
-        self.stats        = stats
-
-matrices = Matrices(SiteCommMatrix, SiteCommMatrixT1T2, SiteCommGlobalMatrix, SiteCommStatistics)
-owriter = OutputWriter(self.options, cinfo, matrices, tinfo)
-owriter.write()
-
-sys.exit(0)
+    #----------------------------------------------------------------------------------------
+    #
+    def MakeReadiness(self):
+        self.ParseXML()              # fill all info into matrices.xmlInfo
+        self.FillSummaryMatrix()     # fill matrices.columnValues with a summary of matrices.xmlInfo
+        self.GetDowntimes()          # set downtime values in matrices.columnValues using info from matrices.xmlInfo
+        self.EvaluateDailyMetric()   # set value for the 'Daily Metric' column in matrices.dailyMetrics
+        self.EvaluateSiteReadiness() # set readiness values in matrices.readiValues
