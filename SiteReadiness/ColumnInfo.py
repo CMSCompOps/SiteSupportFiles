@@ -1,7 +1,7 @@
 import string
 
 class ColumnInfo:
-    def __init__(self,days):
+    def __init__(self):
         webserver="http://dashb-ssb.cern.ch" #"http://dashb-ssb-dev.cern.ch"
         
         self.urls = {}  # SSB URLs Matrix
@@ -9,14 +9,27 @@ class ColumnInfo:
         self.colorCodes = {}  # color codes
         self.metorder = {}            # metric order
         self.metlegends = {}          # metric legends
+        self.days = 0
         
-        tmpf = open("data/dashboard-columns.conf")
+        tmpf = open("data/readiness.conf")
         for line in tmpf:
             if line[0] == '#':
                 continue
             words = line.split()
+            if line[0] == '^': # single parameters
+                words[0] = words[0].replace('^','')
+                if   words[0] == 'daysSC':     self.daysSC     = int(words[1])
+                elif words[0] == 'days':       self.days       = int(words[1])
+                elif words[0] == 'daysToShow': self.daysToShow = int(words[1])
+                else:
+                    print '\nERROR bad config file\n'
+                    sys.exit()
+                continue
             colName = words[0]
-            url = webserver + '/dashboard/request.py/getplotdata?columnid=' + words[1] + '&batch=1&time=' + str(days*24)
+            if self.days == 0:
+                print 'ERROR need to set self.days in config'
+                sys.exit()
+            url = webserver + '/dashboard/request.py/getplotdata?columnid=' + words[1] + '&batch=1&time=' + str(self.days*24)
             self.urls[colName] = url
             # which columns for which tiers
             tiers = words[2].split(',')
