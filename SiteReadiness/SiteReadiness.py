@@ -36,7 +36,7 @@ if options.xml != 'true' and options.xml != 'false': # I don't know why this isn
 cinfo = ColumnInfo() # read config file
 tinfo = TimeInfo()   # set timestamp information
 readimaker = ReadinessMaker(options, cinfo, tinfo)
-readimaker.MakeReadiness() # calculate site readiness
+readimaker.MakeReadiness()
 owriter = OutputWriter(options, cinfo, tinfo, readimaker.matrices)
 owriter.write()
 

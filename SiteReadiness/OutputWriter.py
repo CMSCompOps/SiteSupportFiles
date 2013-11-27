@@ -762,6 +762,10 @@ class OutputWriter:
                     if os.path.isfile(slinkhtml): os.remove(slinkhtml)
                     os.symlink(os.path.split(filepng)[1],slinkhtml)
     
+    # Matrices were renamed for clarity from original code, but we keep the .pck names the same
+    # for backward compatibility (note, I don't know if anything actually uses the pickle files, but
+    # we're playing it safe here)
+    #
     # SiteCommMatrix --> columnValues
     # SiteCommMatrixT1T2 --> dailyMetrics
     # SiteCommGlobalMatrix --> readiValues

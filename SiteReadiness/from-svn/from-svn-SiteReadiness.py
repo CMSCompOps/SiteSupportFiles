@@ -1186,9 +1186,6 @@ def ProduceSiteReadinessHTMLViews(SiteCommGlobalMatrix, metorder, metlegends, co
 
 					state=SiteCommMatrix[sitename][datesgm][met]['Status']
 					colorst=SiteCommMatrix[sitename][datesgm][met]['Color']
-#					if sitename == 'T2_RU_PNPI':
-#						if met == 'GoodT2linksfromT1s':
-#							print date,state,colorst
 					datesgm1 = datesgm[8:10]
 					c = datetime.datetime(*time.strptime(datesgm,"%Y-%m-%d")[0:5])
 					
