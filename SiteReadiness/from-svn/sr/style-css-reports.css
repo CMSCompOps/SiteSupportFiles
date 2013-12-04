@@ -1,0 +1,47 @@
+/*MAIN*/
+
+body {
+  font:1.0em/1.2em Arial;
+  color:#223;
+  text-align: center;}
+
+a:link {text-decoration: none; color:#223}
+a:visited {text-decoration: none; color:#223}
+a:active {text-decoration: none; color:#223}
+a:hover {text-decoration: underline; color: lightblue;}
+
+table.stat th, table.stat td {
+  font:1.0em;
+  font-size : 100%;
+  font-family : Arial,"Myriad Web",Verdana,Helvetica,Arial,sans-serif;
+  font-weight:bold;}
+
+table.leg, table.leg th, table.leg td {
+  font:1.0em;
+  font-size : 100%;
+  font-family : Arial,"Myriad Web",Verdana,Helvetica,Arial,sans-serif;
+  font-weight:bold;}
+
+#leg1 {font-size:0.8em;text-align:center;}
+#legflag {font-size:0.75em;text-align:center;font-weight:bold;}
+#legendexp {font-size:0.75em;text-align:left;}
+#legendexp2 {font-size:0.75em;text-align:center;}
+#legend {font-size:0.6em;text-align:left;}
+
+#site {font-size:2.00em;color:white;text-align:center;}
+#daily-metric-header {font-size:1.7em;text-align:right;}
+#daily-metric {font-size:1.7em;text-align:center;}
+#daily-metricweekend {font-size:1.75em;text-align:center;color:#555555;}
+#metrics-header {font-size:1.5em;text-align:right;}
+#metrics {font-size:1.5em;text-align:center;}
+#metrics2 {font-size:0.75em;text-align:center;font-weight:bold;}
+#metricsweekend {font-size:1.5em;text-align:center;color:#444444;}
+
+#stats {font-size:0.75em;text-align:center;font-weight:bold;}
+
+#date {font-size:1.0em;text-align:center;}
+#month {font-size:0.7em;color:white;text-align:center;}
+#weekend {font-size:1.0em;color:grey;text-align:center;}
+
+#arrow {font-size:0.75em;color:black;text-align:center;}
+
