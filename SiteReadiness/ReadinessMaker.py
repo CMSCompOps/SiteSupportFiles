@@ -30,6 +30,14 @@ class ReadinessMaker:
         self.matrices = Matrices()
 
     #----------------------------------------------------------------------------------------
+    # return null ('n/a') info container
+    def nullInfo(self):
+        info = {}
+        info['Status'] = 'n/a'
+        info['Color'] = 'white'
+        return info
+
+    #----------------------------------------------------------------------------------------
     #        
     def ParseXML(self):
         print "\nObtaining XML info from SSB 'commission' view\n"
@@ -309,28 +317,71 @@ class ReadinessMaker:
                 self.matrices.columnValues[sitename][self.tinfo.todaystamp][col] = nullVals
     
         prog.finish()
-    
+
+    #----------------------------------------------------------------------------------------
+    #
+#    def combineStatuses(self, status1, status2):
+    def combineStatuses(self, receiverVal, giverVal):
+#        if status2.find('(d)') == 0:
+#            status2 = status2 + '\n + \n' + status1
+#        else:
+#            status2 = status2 + ' + ' + status1
+        if receiverVal['Status'].find('(d)') == 0:
+            receiverVal['Status'] = receiverVal['Status'] + '\n + \n' + giverVal['Status']
+        else:
+            receiverVal['Status'] = receiverVal['Status'] + ' + ' + giverVal['Status']
+
+    #----------------------------------------------------------------------------------------
+    #
+    def combineDiskTape(self, receiverVal, giverVal):
+        if receiverVal['Color'] == 'white': # receiver is n/a, so replace with giver
+            receiverVal['Color']  = giverVal['Color']
+            receiverVal['Status'] = giverVal['Status']
+        elif giverVal['Color'] == 'red' and receiverVal['Color'] == 'green': # if one is bad and one is good, overall value should be red
+            receiverVal['Color'] = 'red'
+            self.combineStatuses(receiverVal, giverVal)
+        elif giverVal['Color'] != 'white' and receiverVal['Color'] != 'white': # if neither is n/a, combine status strings with a '+'
+            self.combineStatuses(receiverVal, giverVal)
+#            print crit,receiverVal['Color'],giverVal['Color']
+
+#        try: # try adding them together numerically
+#            receiverVal['Status'] = str(int(giverVal['Status']) + int(receiverVal['Status']))
+#        except:
+#            try: # try adding 8(d)-9(u) construct
+#                tmpReceive = receiverVal['Status'].replace('(d)','').replace('(u)','').split('-')
+#                tmpGive    =    giverVal['Status'].replace('(d)','').replace('(u)','').split('-')
+#                receiverVal['Status'] = str(int(tmpReceive[0]) + int(tmpGive[0])) + '(d)-' + str(int(tmpReceive[1]) + int(tmpGive[1])) + '(u)'
+#            except:
+#                pass
+
     #----------------------------------------------------------------------------------------
     # give receiver site credit for giver site's value for the specified metrics
     def TransferCredit(self):
         print "\nTransfering credit for metrics\n"
-        for transfer,metrics in self.cinfo.creditTransfers.iteritems():
+        for transfer,transInfo in self.cinfo.creditTransfers.iteritems():
             receiver = transfer.split('<---')[0]
             giver    = transfer.split('<---')[1]
+            action   = transInfo.keys()[0]
+            metrics  = transInfo[action]
             if not self.matrices.columnValues.has_key(receiver) or not self.matrices.columnValues.has_key(giver):
-                print 'ERROR: bad receiver/giver in creditTransfers'
-                sys.exit()
+                raise ValueError('bad receiver/giver in creditTransfers')
             items = self.matrices.columnValues[receiver].keys()
             items.sort()
             for day in items:
                 for crit in metrics:
-                    if not self.matrices.columnValues[giver][day].has_key(crit): # set to n/a if giver doesn't have this metric for this day
-                        info = {}
-                        info['Status'] = 'n/a'
-                        info['Color'] = 'white'
-                        self.matrices.columnValues[giver][day][crit] = info
-                    # set value for receiver site to giver site's value
-                    self.matrices.columnValues[receiver][day][crit] = self.matrices.columnValues[giver][day][crit]
+                    if not self.matrices.columnValues[giver][day].has_key(crit): # set to n/a if sites don't have this metric for this day
+                        self.matrices.columnValues[giver][day][crit] = self.nullInfo()
+                    if not self.matrices.columnValues[receiver][day].has_key(crit):
+                        self.matrices.columnValues[receiver][day][crit] = self.nullInfo()
+                    giverVal    = self.matrices.columnValues[giver][day][crit]
+                    receiverVal = self.matrices.columnValues[receiver][day][crit]
+                    if action == 'OW': # see comments in data/credit-transfers.conf
+#                        receiverVal = giverVal
+                        self.matrices.columnValues[receiver][day][crit] = self.matrices.columnValues[giver][day][crit]
+                    elif action == 'ADD':
+                        receiverVal = self.combineDiskTape(receiverVal,giverVal)
+                    else:
+                        raise ValueError('bad action in creditTransfers')
     
     #----------------------------------------------------------------------------------------
     #        
@@ -356,10 +407,7 @@ class ReadinessMaker:
                 status = 'O' # initial value is OK ('O')
                 for crit in self.GetCriteriasList(sitename): # loop through the columns (criteria) that apply to this site
                     if not self.matrices.columnValues[sitename][day].has_key(crit): # fill columnValues with 'n/a' for any missing values
-                        info = {}
-                        info['Status'] = 'n/a'
-                        info['Color'] = 'white'
-                        self.matrices.columnValues[sitename][day][crit] = info
+                        self.matrices.columnValues[sitename][day][crit] = self.nullInfo()
                     if self.matrices.columnValues[sitename][day][crit]['Color'] == 'red': # if any individual metric is red, set status to error ('E')
                         status = 'E'
     

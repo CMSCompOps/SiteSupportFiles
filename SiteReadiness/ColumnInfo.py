@@ -76,8 +76,9 @@ class ColumnInfo:
                 continue
             words = line.split()
             receiver = words[0]
-            giver    = words[1]
-            metrics = words[2].split(',')
-            self.creditTransfers[receiver+'<---'+giver] = metrics
+            action   = words[1]
+            giver    = words[2]
+            metrics = words[3].split(',')
+            self.creditTransfers[receiver+'<---'+giver] = { action : metrics }
         
         tmpf.close()
