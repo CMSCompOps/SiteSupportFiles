@@ -34,7 +34,7 @@ class OutputWriter:
     # don't write any output for this site?
     def SkipSiteOutput(self, sitename):
         if sitename.find("T0_CH_CERN") == 0 : return 1
-#        if sitename.find("_Disk") >= 0 : return 1
+        if sitename.find("_Disk") >= 0 : return 1
         if sitename.find("T3_") == 0 : return 1
     
         # don't write info for sites that are 'n/a' for the entire time period
@@ -207,8 +207,6 @@ class OutputWriter:
     
                         state = self.matrices.columnValues[sitename][datesgm][met]['Status']
                         colorst=self.matrices.columnValues[sitename][datesgm][met]['Color']
-#                        if met == 'GoodT2linksfromT1s':
-#                            print date,state,colorst
                         datesgm1 = datesgm[8:10]
                         c = datetime.datetime(*time.strptime(datesgm,"%Y-%m-%d")[0:5])
                         

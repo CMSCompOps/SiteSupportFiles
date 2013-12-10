@@ -15,6 +15,7 @@ class ColumnInfo:
         self.colors = {}
         self.creditTransfers = {} # method for transfering credit for metric values between sites (eg to account for disk/tape separation)
         
+        metricCount = 1
         tmpf = open("data/readiness.conf")
         for line in tmpf:
             if line[0] == '#':
@@ -43,12 +44,13 @@ class ColumnInfo:
                 self.criteria[tier].append(colName)
             # metric order
             if words[3] != '-':
-                self.metorder[words[3]] = colName
+                self.metorder[metricCount] = colName
+                metricCount += 1
             # legend
-            self.metlegends[colName] = string.replace(words[4], '~', ' ')
+            self.metlegends[colName] = string.replace(words[3], '~', ' ')
             # colors
             self.colorCodes[colName] = {}
-            colors = words[5].split(',')
+            colors = words[4].split(',')
             for pairStr in colors:
                 pair = pairStr.split(':')
                 if len(pair) != 2:

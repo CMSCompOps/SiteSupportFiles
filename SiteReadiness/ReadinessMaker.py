@@ -342,17 +342,6 @@ class ReadinessMaker:
             self.combineStatuses(receiverVal, giverVal)
         elif giverVal['Color'] != 'white' and receiverVal['Color'] != 'white': # if neither is n/a, combine status strings with a '+'
             self.combineStatuses(receiverVal, giverVal)
-#            print crit,receiverVal['Color'],giverVal['Color']
-
-#        try: # try adding them together numerically
-#            receiverVal['Status'] = str(int(giverVal['Status']) + int(receiverVal['Status']))
-#        except:
-#            try: # try adding 8(d)-9(u) construct
-#                tmpReceive = receiverVal['Status'].replace('(d)','').replace('(u)','').split('-')
-#                tmpGive    =    giverVal['Status'].replace('(d)','').replace('(u)','').split('-')
-#                receiverVal['Status'] = str(int(tmpReceive[0]) + int(tmpGive[0])) + '(d)-' + str(int(tmpReceive[1]) + int(tmpGive[1])) + '(u)'
-#            except:
-#                pass
 
     #----------------------------------------------------------------------------------------
     # give receiver site credit for giver site's value for the specified metrics
@@ -376,7 +365,6 @@ class ReadinessMaker:
                     giverVal    = self.matrices.columnValues[giver][day][crit]
                     receiverVal = self.matrices.columnValues[receiver][day][crit]
                     if action == 'OW': # see comments in data/credit-transfers.conf
-#                        receiverVal = giverVal
                         self.matrices.columnValues[receiver][day][crit] = self.matrices.columnValues[giver][day][crit]
                     elif action == 'ADD':
                         receiverVal = self.combineDiskTape(receiverVal,giverVal)
