@@ -1,0 +1,42 @@
+/*MAIN*/
+
+body {font:1.0em/1.2em Arial;color:#223;text-align: center;}
+
+table.stat, table.stat th, table.stat td {
+  border-width: 2px 2px 2px 2px;
+  border-spacing: 2px;
+  border-style: solid solid solid solid;
+  border-color: black black black black;
+  border-collapse: collapse;
+  font:1.0em;
+  font-size : 100%;
+  font-family : Arial,"Myriad Web",Verdana,Helvetica,Arial,sans-serif;
+  font-weight:bold;}
+
+table.leg, table.leg th, table.leg td {
+  font:1.0em;
+  font-size : 100%;
+  font-family : Arial,"Myriad Web",Verdana,Helvetica,Arial,sans-serif;
+  font-weight:bold;}
+
+#metrics {font-size:2.00em;text-align:center;font-weight:bold}
+#site {font-size:0.55em;text-align:center;}
+#site2 {font-size:0.55em;text-align:right;}
+#enabled {font-size:0.55em;text-align:center;}
+#legendexp {font-size:0.7em;text-align:left;}
+#legend {font-size:0.55em;text-align:left;}
+#comment {font-size:0.6em;text-align:center;}
+
+#daily-metric-header {font-size:1.75em;text-align:right;}
+#daily-metric {font-size:1.75em;text-align:center;}
+#daily-metricweekend {font-size:1.75em;text-align:center;color:#555555;}
+#metrics-header {font-size:1.5em;text-align:right;}
+#metricsweekend {font-size:1.5em;text-align:center;color:#444444;}
+
+#stats {font-size:0.8em;text-align:left;}
+
+#date {font-size:1.0em;text-align:center;}
+#month {font-size:0.7em;color:white;text-align:center;}
+#weekend {font-size:1.0em;color:grey;text-align:center;}
+
+#arrow {font-size:0.85em;color:black;text-align:center;}

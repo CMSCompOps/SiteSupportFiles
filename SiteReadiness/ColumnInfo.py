@@ -9,8 +9,13 @@ class ColumnInfo:
         self.colorCodes = {}  # color codes
         self.metorder = {}            # metric order
         self.metlegends = {}          # metric legends
-        self.days = 0
+        self.days = 0        # Number of days for which we'll retrieve information from SSB
+        self.daysSC = 0      # Number of previous days on which the current day's readiness depends
+        self.daysToShow = 0  # Number of days to show in html
+        self.colors = {}
+        self.creditTransfers = {} # method for transfering credit for metric values between sites (eg to account for disk/tape separation)
         
+        metricCount = 1
         tmpf = open("data/readiness.conf")
         for line in tmpf:
             if line[0] == '#':
@@ -18,15 +23,15 @@ class ColumnInfo:
             words = line.split()
             if line[0] == '^': # single parameters
                 words[0] = words[0].replace('^','')
-                if   words[0] == 'daysSC':     self.daysSC     = int(words[1])
-                elif words[0] == 'days':       self.days       = int(words[1])
+                if   words[0] == 'days':       self.days       = int(words[1])
+                elif words[0] == 'daysSC':     self.daysSC     = int(words[1])
                 elif words[0] == 'daysToShow': self.daysToShow = int(words[1])
                 else:
                     print '\nERROR bad config file\n'
                     sys.exit()
                 continue
             colName = words[0]
-            if self.days == 0:
+            if self.days == 0 or self.daysSC == 0 or self.daysToShow == 0:
                 print 'ERROR need to set self.days in config'
                 sys.exit()
             url = webserver + '/dashboard/request.py/getplotdata?columnid=' + words[1] + '&batch=1&time=' + str(self.days*24)
@@ -39,12 +44,13 @@ class ColumnInfo:
                 self.criteria[tier].append(colName)
             # metric order
             if words[3] != '-':
-                self.metorder[words[3]] = colName
+                self.metorder[metricCount] = colName
+                metricCount += 1
             # legend
-            self.metlegends[colName] = string.replace(words[4], '~', ' ')
+            self.metlegends[colName] = string.replace(words[3], '~', ' ')
             # colors
             self.colorCodes[colName] = {}
-            colors = words[5].split(',')
+            colors = words[4].split(',')
             for pairStr in colors:
                 pair = pairStr.split(':')
                 if len(pair) != 2:
@@ -54,7 +60,6 @@ class ColumnInfo:
         
         tmpf.close()
         
-        self.colors = {}
         tmpf = open("data/colors.conf")
         for line in tmpf:
             if line[0] == '#':
@@ -64,5 +69,18 @@ class ColumnInfo:
             if label == '_': # convention: underscore in config means a space
                 label = ' '
             self.colors[label] = words[1]
+        
+        tmpf.close()
+
+        tmpf = open("data/credit-transfers.conf")
+        for line in tmpf:
+            if line[0] == '#':
+                continue
+            words = line.split()
+            receiver = words[0]
+            action   = words[1]
+            giver    = words[2]
+            metrics = words[3].split(',')
+            self.creditTransfers[receiver+'<---'+giver] = { action : metrics }
         
         tmpf.close()

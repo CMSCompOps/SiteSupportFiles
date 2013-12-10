@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python26
 '''
 Created on Dec 10, 2012
 
@@ -6,13 +6,13 @@ Created on Dec 10, 2012
 '''
 
 import sys
-import getopt
 import re
 import urllib
 import codecs
 from xml.dom import minidom
 from datetime import datetime
 from calendar import timegm
+from optparse import OptionParser
 
 #Allows to write utf-8 when redirecting output
 sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
@@ -67,22 +67,28 @@ def getTimeOfFirstMeaningfulResponse(item):
 def main():
     current = datetime.utcnow()
     current_unix = timegm(current.timetuple())
-    input_xml_filename = None
-    openedInTheLastNDays = 365
-    opts, _ = getopt.getopt(sys.argv[1:], '', ['file=', 'days='])
 
-    # check command line parameter
-    for opt, arg in opts:
-        if opt == '--file':
-            input_xml_filename = arg
-        elif opt == '--days':
-            openedInTheLastNDays = int(arg)
-
-    if input_xml_filename == None:
-        url = 'https://savannah.cern.ch/export/cmscompinfrasup/gutsche/535.xml'
-        inputData = urllib.urlopen(url)
+    parser = OptionParser(add_help_option=False)
+    parser.add_option("-h", "--help", action="help")
+    parser.add_option("-i", "--input", dest="inFile",
+                      help="(Optional) Input XML file, under http, containing all the savannah information")
+    parser.add_option("-o", "--output", dest="outFile",
+                      help="(Mandatory) HTML file containing the output of this script")
+    parser.add_option("-d", "--days", dest="openedInTheLastNDays", type="int",
+                      help="(Mandatory) Number of days to look at")
+    (options, args) = parser.parse_args()
+    
+    if options.outFile == None:
+        parser.error("You must provide the output file name (use -o option) or consult --help\n")
+    if options.inFile == None:
+        url='https://savannah.cern.ch/export/cmscompinfrasup/gutsche/535.xml'
+        input = urllib.urlopen(url)
     else:
-        inputData = open(input_xml_filename)
+        input = urllib.urlopen(options.inFile)
+    if options.openedInTheLastNDays == None:
+        parser.error("You must provide the number of days to look at")
+    
+    outf = open(options.outFile, 'w')
 
     RE_XML_ILLEGAL = u'([\u0000-\u0008\u000b-\u000c\u000e-\u001f\ufffe-\uffff])' + \
                      u'|' + \
@@ -90,7 +96,7 @@ def main():
                       (unichr(0xd800), unichr(0xdbff), unichr(0xdc00), unichr(0xdfff),
                        unichr(0xd800), unichr(0xdbff), unichr(0xdc00), unichr(0xdfff),
                        unichr(0xd800), unichr(0xdbff), unichr(0xdc00), unichr(0xdfff))
-    x = re.sub(RE_XML_ILLEGAL, "?", inputData.read())
+    x = re.sub(RE_XML_ILLEGAL, "?", input.read()) # takes ages
     # Remove broken control unicode chars
     brokenControl = '\xc2([^\x80-\xbf])'
     x = re.sub(brokenControl, '?\g<1>', x)
@@ -100,12 +106,12 @@ def main():
     savanaexport = xmldoc.getElementsByTagName('savaneexport')[0]
     items = savanaexport.getElementsByTagName('item')
 
-    print '<html>'
-    print '<pre>'
-    print '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>'
-    print '--------------------------------------------------------------------------------'
-    print 'Report generated on', current, 'UTC'
-    print '--------------------------------------------------------------------------------'
+    outf.write('<html>\n')
+    outf.write('<pre>\n')
+    outf.write('<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>\n')
+    outf.write('--------------------------------------------------------------------------------\n')
+    outf.write('Report generated on ' + str(current) + ' UTC\n')
+    outf.write('--------------------------------------------------------------------------------\n')
 
     for item in items:
         squad = getTag(item, 'assigned_to')
@@ -118,14 +124,11 @@ def main():
         url = 'https://savannah.cern.ch/support/?%s' % ticketId
         if firstSquadAssigned and firstSquadAssigned != 'None':
             squad = firstSquadAssigned
-        if (current_unix - submitted_on) > (openedInTheLastNDays * 86400):
+        if (current_unix - submitted_on) > (options.openedInTheLastNDays * 86400):
             continue
-        print "Ticket URL: %s First assigned squad: %32s Site: %20s First response time: %5.1f hours" % (url,
-                                                                                                        squad,
-                                                                                                        site,
-                                                                                                        firstResponseDelay / 3600)
+        outf.write("Ticket URL: %s First assigned squad: %32s Site: %20s First response time: %5.1f hours\n" % (url, squad, site, firstResponseDelay / 3600))
 
-    print '</pre>'
-    print '</html>'
+    outf.write('</pre>\n')
+    outf.write('</html>\n')
 if __name__ == '__main__':
     main()

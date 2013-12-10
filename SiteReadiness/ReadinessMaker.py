@@ -4,6 +4,8 @@ from datetime import date
 from optparse import OptionParser
 # local imports
 from ProgressBar import ProgressBar
+from TimeInfo import daterange
+from datetime import timedelta as tdelta
 
 class Matrices:
     # renaming scheme:
@@ -26,6 +28,14 @@ class ReadinessMaker:
         self.cinfo = cinfo
         self.tinfo = tinfo
         self.matrices = Matrices()
+
+    #----------------------------------------------------------------------------------------
+    # return null ('n/a') info container
+    def nullInfo(self):
+        info = {}
+        info['Status'] = 'n/a'
+        info['Color'] = 'white'
+        return info
 
     #----------------------------------------------------------------------------------------
     #        
@@ -111,20 +121,18 @@ class ReadinessMaker:
                     continue
     
                 # set to null (default) values
-                for i in range(0, self.cinfo.days+1):
-                    delta = datetime.timedelta(self.cinfo.days-i)
-                    dayloop = self.tinfo.today - delta
-                    dayloopstamp = dayloop.strftime("%Y-%m-%d")
-                    if not self.matrices.columnValues[sitename].has_key(dayloopstamp):
-                        self.matrices.columnValues[sitename][dayloopstamp] = {}
-                    if not self.matrices.columnValues[sitename][dayloopstamp].has_key(col):
-                        self.matrices.columnValues[sitename][dayloopstamp][col] = {}
+                for iday in daterange(self.tinfo.today - tdelta(60), self.tinfo.today + tdelta(1)):
+                    idaystamp = iday.strftime("%Y-%m-%d")
+                    if not self.matrices.columnValues[sitename].has_key(idaystamp):
+                        self.matrices.columnValues[sitename][idaystamp] = {}
+                    if not self.matrices.columnValues[sitename][idaystamp].has_key(col):
+                        self.matrices.columnValues[sitename][idaystamp][col] = {}
                     nullValues = {}
                     nullValues['Status'] = 'n/a'
                     nullValues['Color'] = 'white'
                     nullValues['URL'] = ' '
                     nullValues['validity'] = 0
-                    self.matrices.columnValues[sitename][dayloopstamp][col] = nullValues
+                    self.matrices.columnValues[sitename][idaystamp][col] = nullValues
     
                 items = self.matrices.xmlInfo[sitename][col].keys()
                 items.sort()
@@ -309,6 +317,59 @@ class ReadinessMaker:
                 self.matrices.columnValues[sitename][self.tinfo.todaystamp][col] = nullVals
     
         prog.finish()
+
+    #----------------------------------------------------------------------------------------
+    #
+#    def combineStatuses(self, status1, status2):
+    def combineStatuses(self, receiverVal, giverVal):
+#        if status2.find('(d)') == 0:
+#            status2 = status2 + '\n + \n' + status1
+#        else:
+#            status2 = status2 + ' + ' + status1
+        if receiverVal['Status'].find('(d)') == 0:
+            receiverVal['Status'] = receiverVal['Status'] + '\n + \n' + giverVal['Status']
+        else:
+            receiverVal['Status'] = receiverVal['Status'] + ' + ' + giverVal['Status']
+
+    #----------------------------------------------------------------------------------------
+    #
+    def combineDiskTape(self, receiverVal, giverVal):
+        if receiverVal['Color'] == 'white': # receiver is n/a, so replace with giver
+            receiverVal['Color']  = giverVal['Color']
+            receiverVal['Status'] = giverVal['Status']
+        elif giverVal['Color'] == 'red' and receiverVal['Color'] == 'green': # if one is bad and one is good, overall value should be red
+            receiverVal['Color'] = 'red'
+            self.combineStatuses(receiverVal, giverVal)
+        elif giverVal['Color'] != 'white' and receiverVal['Color'] != 'white': # if neither is n/a, combine status strings with a '+'
+            self.combineStatuses(receiverVal, giverVal)
+
+    #----------------------------------------------------------------------------------------
+    # give receiver site credit for giver site's value for the specified metrics
+    def TransferCredit(self):
+        print "\nTransfering credit for metrics\n"
+        for transfer,transInfo in self.cinfo.creditTransfers.iteritems():
+            receiver = transfer.split('<---')[0]
+            giver    = transfer.split('<---')[1]
+            action   = transInfo.keys()[0]
+            metrics  = transInfo[action]
+            if not self.matrices.columnValues.has_key(receiver) or not self.matrices.columnValues.has_key(giver):
+                raise ValueError('bad receiver/giver in creditTransfers')
+            items = self.matrices.columnValues[receiver].keys()
+            items.sort()
+            for day in items:
+                for crit in metrics:
+                    if not self.matrices.columnValues[giver][day].has_key(crit): # set to n/a if sites don't have this metric for this day
+                        self.matrices.columnValues[giver][day][crit] = self.nullInfo()
+                    if not self.matrices.columnValues[receiver][day].has_key(crit):
+                        self.matrices.columnValues[receiver][day][crit] = self.nullInfo()
+                    giverVal    = self.matrices.columnValues[giver][day][crit]
+                    receiverVal = self.matrices.columnValues[receiver][day][crit]
+                    if action == 'OW': # see comments in data/credit-transfers.conf
+                        self.matrices.columnValues[receiver][day][crit] = self.matrices.columnValues[giver][day][crit]
+                    elif action == 'ADD':
+                        receiverVal = self.combineDiskTape(receiverVal,giverVal)
+                    else:
+                        raise ValueError('bad action in creditTransfers')
     
     #----------------------------------------------------------------------------------------
     #        
@@ -322,6 +383,7 @@ class ReadinessMaker:
     def EvaluateDailyMetric(self):
         print "\nEvaluating Daily Status\n"
         # set value for the 'Daily Metric' column in self.matrices.dailyMetrics
+        # NOTE: also sets n/a in columnValues for missing metrics
         prog = ProgressBar(0, 100, 77)
         for sitename in self.matrices.columnValues:
             prog.increment(100./len(self.matrices.columnValues))
@@ -330,17 +392,14 @@ class ReadinessMaker:
             items.sort()
             status  = ' '
             for day in items:
-                status = 'O'
+                status = 'O' # initial value is OK ('O')
                 for crit in self.GetCriteriasList(sitename): # loop through the columns (criteria) that apply to this site
-                    if not self.matrices.columnValues[sitename][day].has_key(crit):
-                        info = {}
-                        info['Status'] = 'n/a'
-                        info['Color'] = 'white'
-                        self.matrices.columnValues[sitename][day][crit] = info
-                    if self.matrices.columnValues[sitename][day][crit]['Color'] == 'red':
+                    if not self.matrices.columnValues[sitename][day].has_key(crit): # fill columnValues with 'n/a' for any missing values
+                        self.matrices.columnValues[sitename][day][crit] = self.nullInfo()
+                    if self.matrices.columnValues[sitename][day][crit]['Color'] == 'red': # if any individual metric is red, set status to error ('E')
                         status = 'E'
     
-                if self.matrices.columnValues[sitename][day]['Downtimes_top']['Color'] == 'brown':
+                if self.matrices.columnValues[sitename][day]['Downtimes_top']['Color'] == 'brown': # if site was in downtime set to 'SD'
                     status = 'SD'
     
                 # exclude sites that are not in SiteDB
@@ -351,7 +410,7 @@ class ReadinessMaker:
                         if self.matrices.columnValues[sitename][day]['IsSiteInSiteDB']['Color'] == 'white':
                             status = 'n/a'
     
-                if day == self.tinfo.todaystamp:
+                if day == self.tinfo.todaystamp: # set today's to the blank character
                     status = ' '
     
                 self.matrices.dailyMetrics[sitename][day] = status
@@ -368,60 +427,56 @@ class ReadinessMaker:
         for sitename in sitesit:
             prog.increment(100./len(sitesit))
             if not self.matrices.readiValues.has_key(sitename):
-                self.matrices.readiValues[sitename]={}
+                self.matrices.readiValues[sitename] = {}
             tier = sitename.split("_")[0]
-            for i in range(0, self.cinfo.days-self.cinfo.daysSC):
-                dayloop = self.tinfo.today - datetime.timedelta(i)
-                dayloopstamp = dayloop.strftime("%Y-%m-%d")
-                dayloopstampm1 = (dayloop-datetime.timedelta(1)).strftime("%Y-%m-%d")
-                dayloopstampm2 = (dayloop-datetime.timedelta(2)).strftime("%Y-%m-%d")
-                statusE = 0
-                for j in range(0,self.cinfo.daysSC):
-                    dayloop2 = dayloop - datetime.timedelta(j);
-                    dayloopstamp2 = dayloop2.strftime("%Y-%m-%d")
-                    dayofweek2 = dayloop2.weekday()
-                    if self.matrices.dailyMetrics[sitename][dayloopstamp2] == 'E': # Daily Metric value
-                        if ( tier == "T2" or tier == "T3") and (dayofweek2 == 5 or dayofweek2 == 6):
+            start = self.tinfo.today
+            stop  = self.tinfo.today - datetime.timedelta(self.cinfo.days - self.cinfo.daysSC)
+            for iday in daterange(start, stop, datetime.timedelta(-1)): # loop from today to the first day on which we try to calculate the readiness (default: today to (today - 60 - 7) days)
+                idaystamp = iday.strftime("%Y-%m-%d")
+                statusE = 0 # number of days over the previous daysSC days that dailyMetric was in error
+                for jday in daterange(iday, iday - datetime.timedelta(self.cinfo.daysSC), datetime.timedelta(-1)): # loop over the dailyMetric values from the previous daysSC days
+                    jdaystamp = jday.strftime("%Y-%m-%d")
+                    if self.matrices.dailyMetrics[sitename][jdaystamp] == 'E': # if dailyMetric in error
+                        if ( tier == "T2" or tier == "T3") and (jday.weekday() == 5 or jday.weekday() == 6):
                             if not self.options.t2weekends: # skip Errors on weekends for T2s
                                 continue
                         statusE += 1
     
                 status = "n/a"
-                colorst = "white"
-                if statusE > 2:
+                color = "white"
+                previousDayStamp = (iday - datetime.timedelta(1)).strftime("%Y-%m-%d") # iday minus one day
+                dailyMetric = self.matrices.dailyMetrics[sitename][idaystamp]
+                if statusE > 2: # if in error for more than two of the last daysSC days
                     status="NR"
-                    colorst="red"
-                if self.matrices.dailyMetrics[sitename][dayloopstamp] == 'E' and statusE <= 2 :
+                    color="red"
+                if dailyMetric == 'E' and statusE <= 2 : # if in error today
                     status="W"
-                    colorst="yellow"
-                if self.matrices.dailyMetrics[sitename][dayloopstamp] == 'O' and statusE <= 2 :
+                    color="yellow"
+                if dailyMetric == 'O' and statusE <= 2 : # if ok
                     status="R"
-                    colorst="green"
-                if self.matrices.dailyMetrics[sitename][dayloopstamp] == 'O' and self.matrices.dailyMetrics[sitename][dayloopstampm1] == 'O':
+                    color="green"
+                if dailyMetric == 'O' and self.matrices.dailyMetrics[sitename][previousDayStamp] == 'O':
                     status="R"
-                    colorst="green"
-                if self.matrices.dailyMetrics[sitename][dayloopstamp] == 'SD':
+                    color="green"
+                if dailyMetric == 'SD':
                     status='SD'
-                    colorst="brown"
-                self.matrices.readiValues[sitename][dayloopstamp] = status # set actual SR value
-    
+                    color="brown"
+                self.matrices.readiValues[sitename][idaystamp] = status # set actual SR value
+
+            # correct weekend t2 and t3 readiness values to 'R' if they're in downtime, otherwise to friday's value
             if tier=="T2" or tier=="T3":
-                for i in range(0, self.cinfo.days-self.cinfo.daysSC):
-                    dsc = datetime.timedelta(self.cinfo.days - self.cinfo.daysSC - 1);
-                    dayloop = self.tinfo.today - dsc + datetime.timedelta(i)
-                    dayofweek = dayloop.weekday()
-                    dayloopstamp = dayloop.strftime("%Y-%m-%d")
-                    dayloopstampm1 = (dayloop - datetime.timedelta(1)).strftime("%Y-%m-%d")
-                    if self.matrices.dailyMetrics[sitename][dayloopstamp] == 'E':
-                        if dayofweek == 5 or dayofweek == 6: # id. weekends
+                start = self.tinfo.today - datetime.timedelta(self.cinfo.days - self.cinfo.daysSC - 3)
+                stop  = self.tinfo.today
+                for iday in daterange(start, stop):
+                    idaystamp = iday.strftime("%Y-%m-%d")
+                    previousDayStamp = (iday - datetime.timedelta(1)).strftime("%Y-%m-%d")
+                    if self.matrices.dailyMetrics[sitename][idaystamp] == 'E':
+                        if iday.weekday() == 5 or iday.weekday() == 6: # id. weekends
                             if not self.options.t2weekends: # skip Errors on weekends for T2s
-                                if i == 0 or i == 1:
-                                    self.matrices.readiValues[sitename][dayloopstamp] == 'R'
-                                    continue
-                                if self.matrices.readiValues[sitename][dayloopstampm1] == 'SD':
-                                    self.matrices.readiValues[sitename][dayloopstamp] = 'R'
+                                if self.matrices.readiValues[sitename][previousDayStamp] == 'SD':
+                                    self.matrices.readiValues[sitename][idaystamp] = 'R'
                                 else:
-                                    self.matrices.readiValues[sitename][dayloopstamp] = self.matrices.readiValues[sitename][dayloopstampm1]
+                                    self.matrices.readiValues[sitename][idaystamp] = self.matrices.readiValues[sitename][previousDayStamp]
                             
         prog.finish()
     
@@ -439,5 +494,6 @@ class ReadinessMaker:
         self.ParseXML()              # fill all info into matrices.xmlInfo
         self.FillSummaryMatrix()     # fill matrices.columnValues with a summary of matrices.xmlInfo
         self.GetDowntimes()          # set downtime values in matrices.columnValues using info from matrices.xmlInfo
-        self.EvaluateDailyMetric()   # set value for the 'Daily Metric' column in matrices.dailyMetrics
+        self.TransferCredit()        # give receiver site credit for giver site's value for the specified metrics
+        self.EvaluateDailyMetric()   # set value for the 'Daily Metric' column in matrices.dailyMetrics (NOTE: also sets n/a in columnValues for missing metrics)
         self.EvaluateSiteReadiness() # set readiness values in matrices.readiValues
