@@ -42,11 +42,5 @@ python OutputWriter.py
 output:
 http://$USER.web.cern.ch/$USER/SR/HTML/SiteReadinessReport.html
 
-To publish to web please read:
-https://security.web.cern.ch/security/rules/en/afs.shtml
-
-Permissions for your AFS folder:
-https://espace.cern.ch/webservices-help/Websitemanagement/ConfiguringAFSSites/Pages/PermissionsforyourAFSfolder.aspx
-
-Cern Web Services - Create and Manage websites:
-https://webservices.web.cern.ch/webservices/
+INSTRUCTIONS TO PUBLISH TO WEB.CERN.CH:
+https://twiki.cern.ch/twiki/bin/view/CMSPublic/PublishToWEBCERNCH
