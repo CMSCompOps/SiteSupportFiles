@@ -31,16 +31,10 @@ def extractSitesUnderPercentage(dataRows, percentageThreshold):
 
     return sites
 
-
+# WR Criteria = IN if SR <60% for last week AND last 3 months
 oneWeekDataRows = getData(url % '168', headers={"Accept":"application/json"})
 threeMonthsDataRows = getData(url % '2184', headers={"Accept":"application/json"})
-
-
 oneWeekBadSites = extractSitesUnderPercentage(oneWeekDataRows, percentageThreshold)
 threeMonthsBadSites = extractSitesUnderPercentage(threeMonthsDataRows, percentageThreshold)
-
-
 badSites = [val for val in oneWeekBadSites if val in threeMonthsBadSites]
 print badSites
-
-
