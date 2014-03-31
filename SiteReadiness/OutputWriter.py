@@ -573,6 +573,7 @@ class OutputWriter:
                         if not sitename.find(i+"_") == 0 : continue
                         if self.SkipSiteOutput(sitename): continue
                         if pl == 'SD_perc' and self.matrices.stats[sitename][dayspan][pl]==0.: continue # Do not show Up sites on SD plots.
+                        if sitename == 'T1_CH_CERN': sitename = 'T2_CH_CERN'
                         dataR[sitename+" ("+str(self.matrices.stats[sitename][dayspan]["SD_perc"])+"%)"] = self.matrices.stats[sitename][dayspan][pl]
                     
                     if len(dataR) == 0:
