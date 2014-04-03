@@ -19,9 +19,12 @@ These operations are: move files within the grid, to assign jobs, and to access 
 \cf0 \ul \ulc0 @lxplus or cmspc \ulnone \
 mkdir .globus [lugar standard para voms]\
 \ul \
-from local pc\ulnone \
-scp ~/bin/privatekey.pem lxplus.cern.ch:.globus/userkey.pem\
-scp ~/bin/publiccert.pem lxplus.cern.ch:.globus/usercert.pem\
+from local pc\
+\ulnone (to show hidden files:\
+defaults write com.apple.Finder AppleShowAllFiles TRUE\
+killall Finder)\
+scp ~/bin/Certificate/privatekey.pem lxplus.cern.ch:.globus/userkey.pem\
+scp ~/bin/Certificate/publiccert.pem lxplus.cern.ch:.globus/usercert.pem\
 \
 \ul from lxplus or cmspc\ulnone \
 dar permisos:\
@@ -35,19 +38,16 @@ chmod 600 usercert.pem --> owner R&W\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
 \cf0 \ul lxplus\ulnone \
 source /afs/cern.ch/cms/LCG/LCG-2/UI/cms_ui_env.sh\
-\
 or \
-\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
-\cf0 \
 (works better 
-\f1\fs26 work in scl6 nodes
+\f1\fs26 in scl6 nodes
 \f0\fs24 )\
 source /afs/cern.ch/project/gd/LCG-share/3.2.11-1/etc/profile.d/grid-env.sh\
+\
 voms-proxy-init -voms cms\
 Enter GRID pass phrase: [clave con la que encript\'e9 mi PrivateKey]\
 \
-\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
-\cf0 \ul cmspc\
+\ul cmspc\
 \pard\pardeftab720
 \cf0 \ulnone source /uscmst1/prod/grid/gLite_SL5.sh\
 voms-proxy-init -voms cms\
