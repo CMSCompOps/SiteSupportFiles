@@ -100,29 +100,15 @@ ColumnMatrix['Ranking']=Ranking
 
 # -----------------------------------------------------------------------------------------------------------
 	
-#SiteDB_url="https://cmsweb.cern.ch/sitedb/reports/showXMLReport?reportid=naming_convention.ini"
 SiteDB_url="https://cmsweb.cern.ch/sitedb/data/prod/federations-sites"
 SiteDB_sites=[]
 
 print "Getting the url %s" % SiteDB_url
-#os.system("curl -ks -H 'Accept: text/xml'  '%s' > %s" % (SiteDB_url,fileSiteDB))
 os.system("curl -ks --cert $X509_USER_PROXY --key $X509_USER_PROXY  '%s' > %s" % (SiteDB_url,fileSiteDB))
 	
 f=file(fileSiteDB,'r')
-#t= xml.dom.minidom.parse(f)
 rows=json.loads(f)
 f.close()
-
-#for urls in xpath.Evaluate('/report/result/item', t):
-#	info={}
-#	for target in xpath.Evaluate("cms", urls):
-#      		if target.hasChildNodes():
-#		      	s=target.firstChild.nodeValue.encode('ascii')
-#	       	else:
-#	      		s=""
-
-#		if s not in SiteDB_sites:
-#			SiteDB_sites.append(s)
 
 for siteName in rows['result']:
 	SiteDB_sites.append(siteName[3]) 
