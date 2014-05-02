@@ -7,7 +7,8 @@ from xml import xpath
 import re, datetime, string, sys, pprint
 from optparse import OptionParser
 
-usage = "usage: (example) %prog -p /home/jflix/tmp2 -u http://lhcweb.pic.es/cms"
+# usage = "usage: (example) %prog -p /home/jflix/tmp2 -u http://lhcweb.pic.es/cms"
+usage = "usage: (example) %prog -p ~/www/SR2 -u http://cms-site-readiness.web.cern.ch/cms-site-readiness"
 parser = OptionParser(usage=usage, version="%prog 1.0")
 parser.add_option("-p", "--path_out", dest="path_out", help="Sets the PATH to store the produced data", metavar="PATH")
 parser.add_option("-u", "--url", dest="url", help="Sets the base URL where produced data is accessible", metavar="URL")
@@ -44,13 +45,10 @@ def TierExceptions(name):
 	if name=="T2_CH_CAF": i=1
 	if name=="T1_RAL_Stage": i=1
 	if name=="T1_DE_FZK": i=1
-	#if name=="T1_ES_PIC_Disk": i=1
-	#if name=="T1_IT_CNAF_Disk": i=1
 	if name=="T2_RU_IHEP_Disk": i=1
 	if name=="T2_KIPT": i=1
 	if name=="T2_CUKUROVA": i=1
 	if name[0:2]=="XT": i=1
-	#if name=="T1_UK_RAL_Disk": i=1
 	return i
 
 today=datetime.datetime.utcnow()
