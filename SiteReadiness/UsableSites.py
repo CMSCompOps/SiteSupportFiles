@@ -106,9 +106,10 @@ fileSiteDB = "sitedb.json"
 print "Getting the url %s" % SiteDB_url
 os.system("curl -ks --cert $X509_USER_PROXY --key $X509_USER_PROXY  '%s' > %s" % (SiteDB_url,fileSiteDB))
 	
-f=file(fileSiteDB,'r')
+f=open(fileSiteDB,'r')
 rows=json.loads(f)
 f.close()
+os.system("rm '%s'" % (fileSiteDB))
 
 for siteName in rows['result']:
 	SiteDB_sites.append(siteName[3]) 
