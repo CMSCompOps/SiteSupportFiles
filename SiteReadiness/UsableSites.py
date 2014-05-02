@@ -102,14 +102,13 @@ ColumnMatrix['Ranking']=Ranking
 	
 SiteDB_url="https://cmsweb.cern.ch/sitedb/data/prod/federations-sites"
 SiteDB_sites=[]
-fileSiteDB = "sitedb.json"
+
 print "Getting the url %s" % SiteDB_url
 os.system("curl -ks --cert $X509_USER_PROXY --key $X509_USER_PROXY  '%s' > %s" % (SiteDB_url,fileSiteDB))
 	
-f=open(fileSiteDB,'r')
+f=file(fileSiteDB,'r')
 rows=json.loads(f)
 f.close()
-os.system("rm '%s'" % (fileSiteDB))
 
 for siteName in rows['result']:
 	SiteDB_sites.append(siteName[3]) 
