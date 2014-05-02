@@ -5,7 +5,6 @@
 import sys, xml.dom.minidom, os, datetime, time, pprint
 from xml import xpath
 from optparse import OptionParser
-import simplejson as json
 
 usage = "usage: (example) %prog -p /home/jflix/tmp2"
 parser = OptionParser(usage=usage, version="%prog 1.0")
@@ -45,22 +44,33 @@ if not os.path.exists(pathSiteDB):
 if not os.path.exists(pathoutASCII):
 	os.makedirs(pathoutASCII)
 	
-SiteDB_url="https://cmsweb.cern.ch/sitedb/data/prod/federations-sites"
+SiteDB_url="https://cmsweb.cern.ch/sitedb/reports/showXMLReport?reportid=naming_convention.ini"
 SiteDB_sites=[]
 
 print "Getting the url %s" % SiteDB_url
-os.system("curl -ks --cert $X509_USER_PROXY --key $X509_USER_PROXY  '%s' > %s" % (SiteDB_url,fileSiteDB))
+os.system("curl -ks -H 'Accept: text/xml'  '%s' > %s" % (SiteDB_url,fileSiteDB))
 	
 f=file(fileSiteDB,'r')
-rows=json.loads(f)
+t= xml.dom.minidom.parse(f)
 f.close()
 
-for siteName in rows['result']:
-	SiteDB_sites.append(siteName[3]) 
+for urls in xpath.Evaluate('/report/result/item', t):
+
+	info={}
+	for target in xpath.Evaluate("cms", urls):
+      		if target.hasChildNodes():
+		      	s=target.firstChild.nodeValue.encode('ascii')
+	       	else:
+	      		s=""
+
+		if s not in SiteDB_sites:
+			SiteDB_sites.append(s)
+
+#pprint.pprint(SiteDB_sites)
 
 f=file(ssbout,'w')
 f.write('# Is Site in SiteDB?\n')
-f.write('# Information taken daily from SiteDB: ' + SiteDB_url + '\n')
+f.write('# Information taken daily from SiteDB: https://cmsweb.cern.ch/sitedb/reports/showXMLReport?reportid=naming_convention.ini\n')
 f.write('#\n')
 f.write(reptime)
 f.write('#\n')
