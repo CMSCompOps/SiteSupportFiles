@@ -7,7 +7,8 @@ from xml import xpath
 import re, datetime, string, sys, pprint
 from optparse import OptionParser
 
-usage = "usage: (example) %prog -p /home/jflix/tmp2 -u http://lhcweb.pic.es/cms"
+# usage = "usage: (example) %prog -p /home/jflix/tmp2 -u http://lhcweb.pic.es/cms"
+usage = "usage: (example) %prog -p ~/www/SR2 -u http://cms-site-readiness.web.cern.ch/cms-site-readiness"
 parser = OptionParser(usage=usage, version="%prog 1.0")
 parser.add_option("-p", "--path_out", dest="path_out", help="Sets the PATH to store the produced data", metavar="PATH")
 parser.add_option("-u", "--url", dest="url", help="Sets the base URL where produced data is accessible", metavar="URL")
@@ -27,9 +28,9 @@ def getTierNumber(name):
 def Buff2CMS(unicode_buffer):
 	buffer=str(unicode_buffer)
 	name=buffer
-	i=string.find(buffer,"_Buffer")
-	if i>0:
-		name=buffer[0:i]
+	#i=string.find(buffer,"_Buffer")
+	#if i>0:
+	#	name=buffer[0:i]
 	i=string.find(buffer,"_MSS")
 	if i>0:
 		name=buffer[0:i]
@@ -44,13 +45,10 @@ def TierExceptions(name):
 	if name=="T2_CH_CAF": i=1
 	if name=="T1_RAL_Stage": i=1
 	if name=="T1_DE_FZK": i=1
-	if name=="T1_ES_PIC_Disk": i=1
-	if name=="T1_IT_CNAF_Disk": i=1
 	if name=="T2_RU_IHEP_Disk": i=1
 	if name=="T2_KIPT": i=1
 	if name=="T2_CUKUROVA": i=1
 	if name[0:2]=="XT": i=1
-	if name=="T1_UK_RAL_Disk": i=1
 	return i
 
 today=datetime.datetime.utcnow()
@@ -207,7 +205,14 @@ for i in range(0,len(keys)):
 			siteColor5[site]="green"
 
 # Think how to manage CERN T0/T1
-
+    # T1:
+    # siteStatus1[site]=fromT0
+    # siteStatus2[site]=toT2
+    # ss3="%i(d)-%i(u)" % (fromT1,toT1)
+    # siteStatus3[site]=ss3
+    # T2:
+    # siteStatus4[site]=toT1
+    # siteStatus5[site]=fromT1
 	if site=="T1_CH_CERN":
 		siteStatus1[site]="n/a"
 		siteStatus4[site]="n/a"
