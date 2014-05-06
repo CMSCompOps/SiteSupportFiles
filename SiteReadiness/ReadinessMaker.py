@@ -381,7 +381,7 @@ class ReadinessMaker:
     #----------------------------------------------------------------------------------------
     #        
     def EvaluateDailyMetric(self):
-        print "\nEvaluating Daily Status\n"
+        print "\nEvaluating Daily Metric\n"
         # set value for the 'Daily Metric' column in self.matrices.dailyMetrics
         # NOTE: also sets n/a in columnValues for missing metrics
         prog = ProgressBar(0, 100, 77)
@@ -409,6 +409,7 @@ class ReadinessMaker:
                     if self.matrices.columnValues[sitename][day].has_key('IsSiteInSiteDB'):
                         if self.matrices.columnValues[sitename][day]['IsSiteInSiteDB']['Color'] == 'white':
                             status = 'n/a'
+                            #status = status
     
                 if day == self.tinfo.todaystamp: # set today's to the blank character
                     status = ' '
