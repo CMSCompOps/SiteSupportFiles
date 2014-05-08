@@ -398,7 +398,6 @@ class ReadinessMaker:
                         self.matrices.columnValues[sitename][day][crit] = self.nullInfo()
                     if self.matrices.columnValues[sitename][day][crit]['Color'] == 'red': # if any individual metric is red, set status to error ('E')
                         status = 'E'
-    
                 if self.matrices.columnValues[sitename][day]['Downtimes_top']['Color'] == 'brown': # if site was in downtime set to 'SD'
                     status = 'SD'
     
@@ -408,8 +407,8 @@ class ReadinessMaker:
                 if sitedbtimeint.days >= 0:
                     if self.matrices.columnValues[sitename][day].has_key('IsSiteInSiteDB'):
                         if self.matrices.columnValues[sitename][day]['IsSiteInSiteDB']['Color'] == 'white':
-                            #status = 'n/a'
-                            status = status
+                            status = 'n/a'
+                            #status = status
     
                 if day == self.tinfo.todaystamp: # set today's to the blank character
                     status = ' '
