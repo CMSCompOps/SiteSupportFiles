@@ -191,9 +191,14 @@ class OutputWriter:
     
                 for metnumber in indmetrics:
     
-                    met=self.cinfo.metorder[metnumber]
-    
-                    if not self.matrices.columnValues[sitename][dates[0]].has_key(met) or met == 'IsSiteInSiteDB': continue # ignore 
+                    met = self.cinfo.metorder[metnumber] #colName
+                    met1 = self.cinfo.printCol[met] #pCol (print permission)
+                    tier = sitename.split("_")[0]   
+                    met2 = self.cinfo.criteria[tier]
+                    
+                    #if not self.matrices.columnValues[sitename][dates[0]].has_key(met) or met == 'IsSiteInSiteDB': continue # ignore 
+                    if not self.matrices.columnValues[sitename][dates[0]].has_key(met) or met1 == '0' : continue # ignore
+                    if met1 == 't' and not met in met2 : continue # ignore    
                     if sitename.find("T1_CH_CERN") == 0 and met == 'T1linksfromT0': continue # ignore 
     
                     if met == 'SAMAvailability':
@@ -734,9 +739,12 @@ class OutputWriter:
             for dat in dates:
                 if self.SkipSiteOutput(sitename): continue
                 for metnumber in indmetrics:
-                    met = self.cinfo.metorder[metnumber]
-                    if not self.matrices.columnValues[sitename][dat].has_key(met) or met == 'IsSiteInSiteDB': continue # ignore 
-    
+                    met = self.cinfo.metorder[metnumber] #colName
+                    met1 = self.cinfo.printCol[met] #pCol (print permission)
+                                        
+                    #if not self.matrices.columnValues[sitename][dat].has_key(met) or met == 'IsSiteInSiteDB': continue # ignore
+                    if not self.matrices.columnValues[sitename][dat].has_key(met) or met1 == '0' : continue # ignore 
+                    
                     if self.matrices.columnValues[sitename][dat][met].has_key('URL'):
                         url = self.matrices.columnValues[sitename][dat][met]['URL']
                     else:

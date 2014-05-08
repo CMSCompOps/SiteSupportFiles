@@ -393,12 +393,11 @@ class ReadinessMaker:
             status  = ' '
             for day in items:
                 status = 'O' # initial value is OK ('O')
-                for crit in self.GetCriteriasList(sitename): # loop through the columns (criteria) that apply to this site
+                for crit in self.GetCriteriasList(sitename): # loop through the columns (criteria) that apply to this site and affect site status
                     if not self.matrices.columnValues[sitename][day].has_key(crit): # fill columnValues with 'n/a' for any missing values
                         self.matrices.columnValues[sitename][day][crit] = self.nullInfo()
                     if self.matrices.columnValues[sitename][day][crit]['Color'] == 'red': # if any individual metric is red, set status to error ('E')
                         status = 'E'
-    
                 if self.matrices.columnValues[sitename][day]['Downtimes_top']['Color'] == 'brown': # if site was in downtime set to 'SD'
                     status = 'SD'
     
