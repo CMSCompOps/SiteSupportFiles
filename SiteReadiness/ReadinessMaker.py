@@ -408,8 +408,8 @@ class ReadinessMaker:
                 if sitedbtimeint.days >= 0:
                     if self.matrices.columnValues[sitename][day].has_key('IsSiteInSiteDB'):
                         if self.matrices.columnValues[sitename][day]['IsSiteInSiteDB']['Color'] == 'white':
-                            #status = 'n/a'
-                            status = status
+                            status = 'n/a'
+                            #status = status
     
                 if day == self.tinfo.todaystamp: # set today's to the blank character
                     status = ' '
