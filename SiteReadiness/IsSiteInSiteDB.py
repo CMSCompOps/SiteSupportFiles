@@ -5,8 +5,7 @@
 import sys, xml.dom.minidom, os, datetime, time, pprint
 from xml import xpath
 from optparse import OptionParser
-import simplejson as json
-
+import httplib
 usage = "usage: (example) %prog -p /home/jflix/tmp2"
 parser = OptionParser(usage=usage, version="%prog 1.0")
 parser.add_option("-p", "--path_out", dest="path_out", help="Sets the PATH to store the produced data", metavar="PATH")
@@ -45,18 +44,46 @@ if not os.path.exists(pathSiteDB):
 if not os.path.exists(pathoutASCII):
 	os.makedirs(pathoutASCII)
 	
-SiteDB_url="https://cmsweb.cern.ch/sitedb/data/prod/federations-sites"
+#SiteDB_url="https://cmsweb.cern.ch/sitedb/reports/showXMLReport?reportid=naming_convention.ini"
+#print "Getting the url %s" % SiteDB_url
+#os.system("curl -ks -H 'Accept: text/xml'  '%s' > %s" % (SiteDB_url,fileSiteDB))
+#f=file(fileSiteDB,'r')
+#t= xml.dom.minidom.parse(f)
+#f.close()
+
+def fetch_all_sites(url,api):
+  headers = {"Accept": "application/json"}
+  if 'X509_USER_PROXY' in os.environ:
+    print 'X509_USER_PROXY found'
+    conn = httplib.HTTPSConnection(url, cert_file = os.getenv('X509_USER_PROXY'), key_file = os.getenv('X509_USER_PROXY'))
+  r1=conn.request("GET",api, None, headers)
+  r2=conn.getresponse()
+  inputjson=r2.read()
+  jn = simplejson.loads(inputjson)
+  conn.close()
+  return jn
+
+url = "cmsweb.cern.ch"
+api = "/sitedb/data/prod/federations-sites"
+SiteDB_url = url + api
 SiteDB_sites=[]
 
-print "Getting the url %s" % SiteDB_url
-os.system("curl -ks --cert $X509_USER_PROXY --key $X509_USER_PROXY  '%s' > %s" % (SiteDB_url,fileSiteDB))
-	
-f=open(fileSiteDB,'r')
-rows=json.loads(f)
-f.close()
+allSitesList = fetch_all_sites(url, api)
+info = {}
+for site in allSitesList['result']:
+  print site[3]
+  SiteDB_sites.append(site[3])
 
-for siteName in rows['result']:
-	SiteDB_sites.append(siteName[3]) 
+#for urls in xpath.Evaluate('/report/result/item', t):
+
+#	info={}
+#	for target in xpath.Evaluate("cms", urls):
+#      		if target.hasChildNodes():
+#		      	s=target.firstChild.nodeValue.encode('ascii')
+#	       	else:
+#	      		s=""
+#		if s not in SiteDB_sites:
+#			SiteDB_sites.append(s)
 
 f=file(ssbout,'w')
 f.write('# Is Site in SiteDB?\n')
