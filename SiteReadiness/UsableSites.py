@@ -82,8 +82,8 @@ def ProduceSiteReadinessSSBFile(usable, not_usable, fileSSB, todaystamptofile, d
 			tofile=todaystampfileSSB + '\t' + sitename + '\t' + "not_usable" + '\t' + "red" + '\t' + linkSSB + "\n"
 			fileHandle.write(tofile)
 			
-# URLs with SSB inputs --------------------------------------------------------------------------------------
-
+# SSB inputs (URLs)
+# ------------------
 #webserver_devel="http://dashb-ssb-devel.cern.ch"
 webserver="http://dashb-ssb.cern.ch"
 
@@ -98,26 +98,25 @@ ColumnMatrix['CE_sam']=CE_sam
 ColumnMatrix['SRM_sam']=SRM_sam
 ColumnMatrix['Ranking']=Ranking
 
-# -----------------------------------------------------------------------------------------------------------
-	
-SiteDB_url="https://cmsweb.cern.ch/sitedb/data/prod/federations-sites"
-SiteDB_sites=[]
-fileSiteDB = "sitedb.json"
-print "Getting the url %s" % SiteDB_url
-os.system("curl -ks --cert $X509_USER_PROXY --key $X509_USER_PROXY  '%s' > %s" % (SiteDB_url,fileSiteDB))
-	
-f=open(fileSiteDB,'r')
-rows=json.loads(f)
-f.close()
-os.system("rm '%s'" % (fileSiteDB))
+# Read list of sites from SiteDB
+# -------------------------------
+# No need of SiteDB - Script collects info from SR metrics (which already check SiteDB)
+# this script used to check if site is in SiteDB (now lines are commented), if not: omit that site from report (redundant since SR metrics won't report those sites)
+# -------------------------------
+#SiteDB_url="https://cmsweb.cern.ch/sitedb/data/prod/federations-sites"
+#SiteDB_sites=[]
+#fileSiteDB = "sitedb.json"
+#print "Getting the url %s" % SiteDB_url
+#os.system("curl -ks --cert $X509_USER_PROXY --key $X509_USER_PROXY  '%s' > %s" % (SiteDB_url,fileSiteDB))
+#f=open(fileSiteDB,'r')
+#rows=json.loads(f)
+#f.close()
+#os.system("rm '%s'" % (fileSiteDB))
+#for siteName in rows['result']:
+    #SiteDB_sites.append(siteName[3])
 
-for siteName in rows['result']:
-	SiteDB_sites.append(siteName[3]) 
-
-########################################################
 # Reading data from SSB
-########################################################
-
+# ----------------------
 sites={}
 
 ColumnItems = ColumnMatrix.keys()
@@ -194,7 +193,7 @@ downtime=[]
 for sitename in site:
 	
 	if sitename.find("T3_") == 0 or sitename.find("T0_") == 0 or sitename.find("T1_") == 0: continue
-       	if not sitename in SiteDB_sites: continue
+        #if not sitename in SiteDB_sites: continue
        	if sitename.find("T2_CH_CAF") == 0 or sitename.find("T2_PT_LIP_Coimbra") == 0: continue
 
 	useit=1
@@ -248,8 +247,8 @@ for sitename in site:
 		if not not_usable.has_key(sitename): not_usable[sitename]=0
 
 
-############################################################
-		
+# Output file
+# ------------
 fileHandle.write("---------- USABLE SITES FOR ANALYSIS ---------- \n\n")
 
 siteus = usable.keys()
@@ -266,8 +265,6 @@ for sitename in sitenous:
 	if sitename in downtime: fileHandle.write(sitename+" (SD)\n")
 	else: fileHandle.write(sitename+"\n")
 
-############################################################
-
 totalsites=len(usable)+len(not_usable)
 
 fileHandle.write("\n--------- Statistics ---------- \n\n")
@@ -278,11 +275,11 @@ fileHandle.write("\n--------- Detailed Site Status ---------- \n\n")
 for sitename in sites:
 	
 	if sitename.find("T3_") == 0 or sitename.find("T0_") == 0 or sitename.find("T1_") == 0: continue
-       	if not sitename in SiteDB_sites:
-#     		fileHandle.write("Site is not on SiteDB\n\n")
+        #if not sitename in SiteDB_sites:
+            #fileHandle.write("Site is not on SiteDB\n\n")
 		continue
        	if sitename.find("T2_CH_CAF") == 0 or sitename.find("T2_PT_LIP_Coimbra") == 0:
-#		fileHandle.write("Site shall be skipped\n\n")
+		fileHandle.write("Site shall be skipped\n\n")
 		continue
 	
 	for col in ColumnMatrix:
