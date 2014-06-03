@@ -346,9 +346,9 @@ class OutputWriter:
                 fileHandle.write("</tr>\n")
                 
                 fileHandle.write("<tr height=15>\n") 
-                mes="\"Scheduled Downtimes\": site maintenances" 
+                mes="\"Maintenance\": Sites scheduled downtimes"
                 fileHandle.write("<td width=" + lw2 + " colspan=2><div id=\"legendexp\">" + mes + "</div></td>\n")
-                mes="\"Job Robot\":" 
+                mes="\"HammerCloud\":"
                 fileHandle.write("<td width=" + lw2 + " colspan=2><div id=\"legendexp\">" + mes + "</div></td>\n")
                 mes="\"Good Links\":" 
                 fileHandle.write("<td width=" + lw2 + " colspan=2><div id=\"legendexp\">" + mes + "</div></td>\n")
@@ -358,9 +358,9 @@ class OutputWriter:
                 fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = Site is not declaring Scheduled-downtime </div></td>\n")
                 fileHandle.write("<td width=" + lw1 + " bgcolor=green><div id=legflag></div></td>\n")
                 if sitename.find('T1_') == 0:
-                    fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = Job success rate is &ge; 90%</div></td>\n")
+                    fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = HC success rate is &ge; 90%</div></td>\n")
                 else:
-                    fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = Job success rate is &ge; 80%</div></td>\n")
+                    fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = HC success rate is &ge; 80%</div></td>\n")
                 fileHandle.write("<td width=" + lw1 + " bgcolor=green><div id=legflag></div></td>\n")
                 fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = at least half of links have 'good' transfers (i.e. with transfer quality > 50%)</div></td>\n")
                 fileHandle.write("</tr>\n")
@@ -369,9 +369,9 @@ class OutputWriter:
                 fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = full-site in SD OR all CMS SE(s) in SD OR all CMS CE(s) in SD</div></td>\n")
                 fileHandle.write("<td width=" + lw1 + " bgcolor=red><div id=legflag></div></td>\n")
                 if sitename.find('T1_') == 0:
-                    fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = Job success rate is < 90%</div></td>\n")
+                    fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = HC success rate is < 90%</div></td>\n")
                 else:
-                    fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = Job success rate is < 80%</div></td>\n")
+                    fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = HC success rate is < 80%</div></td>\n")
                 fileHandle.write("<td width=" + lw1 + " bgcolor=red><div id=legflag></div></td>\n")
                 fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = Otherwise</div></td>\n")
                 fileHandle.write("</tr>\n")
@@ -386,7 +386,7 @@ class OutputWriter:
                 fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = full-site in UD OR all CMS SE(s) in UD OR all CMS CE(s) in UD</div></td>\n")
     
                 fileHandle.write("<td width=" + lw1 + " bgcolor=white><div id=legflag>n/a</div></td>\n")
-                fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = Job success rate is n/a</div></td>\n")
+                fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = HC success rate is n/a</div></td>\n")
                 fileHandle.write("</tr>\n")
     
                 fileHandle.write("<tr height=10>\n") 
