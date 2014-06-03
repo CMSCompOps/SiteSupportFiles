@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-""" @author: Josep Flix (jflix@pic.es) """
+""" @author: Josep Flix / John Artieda """
 
 import sys, xml.dom.minidom, os, datetime, time, pprint
 from xml import xpath
@@ -10,8 +10,7 @@ import simplejson as json
 # OptParse
 from optparse import OptionParser
 
-
-usage = "usage: (example) %prog -p /home/jflix/tmp2 -u http://lhcweb.pic.es/cms"
+usage = "usage: (example) %prog -p ~/www/SR2 -u http://cms-site-readiness.web.cern.ch/cms-site-readiness"
 parser = OptionParser(usage=usage, version="%prog 1.0")
 parser.add_option("-p", "--path_out", dest="path_out", help="Sets the PATH to store the produced data", metavar="PATH")
 parser.add_option("-u", "--url", dest="url", help="Sets the base URL where produced data is accessible", metavar="URL")
