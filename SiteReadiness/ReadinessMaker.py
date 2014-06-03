@@ -40,7 +40,7 @@ class ReadinessMaker:
     #----------------------------------------------------------------------------------------
     #        
     def ParseXML(self):
-        print "\nObtaining XML info from SSB 'commission' view\n"
+        print "\nObtaining XML info from SSB 'Site Readiness' view\n"
         prog = ProgressBar(0, 100, 77)
 
         xmlCacheDir = self.options.path_out + "/INPUTxmls"
