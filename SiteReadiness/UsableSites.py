@@ -276,11 +276,11 @@ for sitename in sites:
 	if sitename.find("T3_") == 0 or sitename.find("T0_") == 0 or sitename.find("T1_") == 0: continue
         #if not sitename in SiteDB_sites:
             #fileHandle.write("Site is not on SiteDB\n\n")
-		continue
+            #continue
        	if sitename.find("T2_CH_CAF") == 0 or sitename.find("T2_PT_LIP_Coimbra") == 0:
-		fileHandle.write("Site shall be skipped\n\n")
-		continue
-	
+       		fileHandle.write("Site shall be skipped\n\n")
+       		continue
+       	
 	for col in ColumnMatrix:
 
 		if not sites[sitename].has_key(col):
