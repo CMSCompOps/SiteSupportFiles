@@ -35,6 +35,7 @@ class OutputWriter:
     def SkipSiteOutput(self, sitename):
         if sitename.find("T0_CH_CERN") == 0 : return 1
         if sitename.find("T1_CH_CERN") == 0 : return 1
+        if sitename.find("_Buffer") >= 0 : return 1
         if sitename.find("_Disk") >= 0 : return 1
         if sitename.find("T3_") == 0 : return 1
     
