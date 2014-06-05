@@ -8,15 +8,16 @@ webdir=$HOME/www/SR2
 webofficial=/afs/cern.ch/cms/LCG/www/sreadiness/SiteReadiness
 link=http://cms-site-readiness.web.cern.ch/cms-site-readiness
 
-# python script
+# Running all necessary scripts
+# Active links
+python EnabledLinksFromPhEDExDataSrv.py -p $webdir -u $link
+
+# Site Readiness python
 cd $location
 ./SiteReadiness.py -p $webdir -u $link
 # $webdir: output location
 # $link: address to use inside files for output links
 
-# running other necessary scripts
-# Active links
-python EnabledLinksFromPhEDExDataSrv.py -p $webdir -u $link
 # Usable sites for analysis
 python UsableSites.py -p $webdir -u $link
 
