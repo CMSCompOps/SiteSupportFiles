@@ -7,7 +7,6 @@ location=$HOME/SiteSupportFiles/SiteReadiness
 webdir=$HOME/www/SR2
 webofficial=/afs/cern.ch/cms/LCG/www/sreadiness/SiteReadiness
 link=http://cms-site-readiness.web.cern.ch/cms-site-readiness
-#link=https://jartieda.web.cern.ch/jartieda/SR2
 
 # python script
 cd $location
@@ -17,9 +16,9 @@ cd $location
 
 # running other necessary scripts
 # Active links
-python EnabledLinksFromPhEDExDataSrv.py -p ~/www/SR2 -u http://cms-site-readiness.web.cern.ch/cms-site-readiness
+python EnabledLinksFromPhEDExDataSrv.py -p $webdir -u $link
 # Usable sites for analysis
-python UsableSites.py -p ~/www/SR2 -u http://cms-site-readiness.web.cern.ch/cms-site-readiness
+python UsableSites.py -p $webdir -u $link
 
 # copy all output files to web location
 cp -a $webdir/. $webofficial/
