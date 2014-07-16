@@ -15,6 +15,28 @@
 	include ("lib/bootstrap.class.php");
 	bootstrap::getNavBar(false, 'wrlist', 'Morgue List Table / Create Twiki Code');
 	bootstrap::getHeadLine('Create morgue twiki');
+	error_reporting(E_ALL);
+	ini_set('display_errors', 1);
+
+	function metricParser($lines){
+	    preg_match_all("/(.*?)\t(.*?)\t(.*?)\t(.*?)\t(.*?)\n/m", $lines, $matches);
+	    $result = array();
+	    for($i = 0; $i < count($matches[0]); $i++){
+	            $result[] = array('date' => $matches[1][$i], 'site' => $matches[2][$i],
+	                              'value'=> $matches[3][$i], 'color'=> $matches[4][$i],
+	                              'url'  => $matches[5][$i]);
+	    }
+	    return $result;
+	}
+	
+	$sites = file_get_contents('https://jartieda.web.cern.ch/jartieda/Pledges_View_SSB/real.txt');
+	$sites = metricParser($sites);
+	
+	function getRealCore($siteName, $sites){
+	    foreach($sites as $site) if($site['site'] == $siteName) return $site['value'];
+	    return null;
+	}		
+	
 	
 ?>
 
@@ -39,10 +61,11 @@
 			  		<th> Exit Code (SAM) </th>
 			  		<th> Exit Code (HC) </th>
 			  		<th> Links </th>
+			  		<th> Real[cores] </th>
 			  		<th> Ticket Number </th>
 			  	</tr>';
 
-			$twikicode[] ='| *Count* | *Site* | *In* | *Out* | *Total Week* | *Exit Code (SAM)* | *Exit Code (HC)* | *Links* | *Ticket Number* | *No reply* |';
+			$twikicode[] ='| *Count* | *Site* | *In* | *Out* | *Total Week* | *Exit Code (SAM)* | *Exit Code (HC)* | *Links* | *Real[Cores]* | *Ticket Number* | *No reply* |';
 			$count = 0;
 			while($veri = mysql_fetch_array($query))
 				{
@@ -50,15 +73,16 @@
 					echo '<tr>';
 					echo '<td>'.$count.'</td>';
 					echo '<td>'.$veri[1].'</td>';
-					echo '<td>'.$operation->dateCompare($veri[2]).'</td>'; # in / out
+					echo '<td>'.$operation->morgueInOut($veri[2]).'</td>'; # in / out
 					echo '<td></td>';
 					echo '<td>'.$operation->calculateTotalWeek($veri[1] , $veri[2]).'</td>';
 					echo '<td>'.$operation->calculateFailTest("sam" , $veri[0] , "off").'</td>';
 					echo '<td>'.$operation->calculateFailTest("hc" , $veri[0] , "off").'</td>';
 					echo '<td class = "links">'.$operation->calculateFailTest("links" , $veri[0] , "off").'</td>';
+					echo '<td>' . getRealCore($veri[1], $sites) . '</td>';
 					echo '<td><a target = "new" href = "' . $veri[5] . '">' . $veri[4] .  '</a></td>';
 					echo '</tr>';
-					$twikicode[] = '| '.$count.' | '.$veri[1].' | '.$operation->datecompare($veri[2]).' | '.''.' | '.$operation->calculateTotalWeek($veri[1] , $veri[2]).' | '.$operation->calculateFailTest("sam" , $veri[0] , "on").' | '.$operation->calculateFailTest("hc" , $veri[0] , "on").' | '.$operation->calculateFailTest("links" , $veri[0] , "on").' | '.'[['.$veri[5].']['.$veri[4].']] |' . ' |';     
+					$twikicode[] = '| '.$count.' | '.$veri[1].' | '.$operation->morgueInOut($veri[2]).' | '.''.' | '.$operation->calculateTotalWeek($veri[1] , $veri[2]).' | '.$operation->calculateFailTest("sam" , $veri[0] , "on").' | '.$operation->calculateFailTest("hc" , $veri[0] , "on").' | '.$operation->calculateFailTest("links" , $veri[0] , "on").' | ' . getRealCore($veri[1], $sites) . ' | ' .'[['.$veri[5].']['.$veri[4].']] |' . ' | ';     
 				 }
 
 

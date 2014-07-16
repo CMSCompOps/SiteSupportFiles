@@ -149,7 +149,7 @@ class bootstrap{
 		echo '<h4 class= "summary_headline" align="center">' . $headLine . '</h4>';
 	}
 
-	function getFooter(){
+	static function getFooter(){
 		echo '		
 		<div class="navbar navbar-default navbar-fixed-bottom">
 			<div class="container">
