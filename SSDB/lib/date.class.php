@@ -70,6 +70,23 @@ class calculate
 
 			}
 
+		function morgueInOut($date)
+			{
+				$end = strtotime(date('Y-m-d')); #today
+				$start = strtotime($date);
+				$days_between = ceil((abs($end - $start) / 86400) / 6);
+				if($days_between <= 8) 
+					{
+						return "x";
+					}
+				else
+					{
+						return "";
+					}
+
+			}
+
+
 
 		function calculateTotalWeek($siteName , $indate)
 			{
