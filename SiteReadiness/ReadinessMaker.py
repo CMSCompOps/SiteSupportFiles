@@ -176,16 +176,20 @@ class ReadinessMaker:
                             statusu=self.matrices.xmlInfo[sitename][col][coldate]['URL']
                             statusc='green'
                             if self.matrices.xmlInfo[sitename][col][coldate]['Status']=="pend":
-                                statusc='orange'
                                 status='-'
-                        elif self.cinfo.colorCodes[col][self.matrices.xmlInfo[sitename][col][coldate]['COLOR']] == "white":
-                            statusu=' '
-                            status='n/a'
-                            statusc='white'
+                                statusc='orange'
                         elif self.cinfo.colorCodes[col][self.matrices.xmlInfo[sitename][col][coldate]['COLOR']] == "red":
                             status=self.matrices.xmlInfo[sitename][col][coldate]['Status']
                             statusu=self.matrices.xmlInfo[sitename][col][coldate]['URL']
                             statusc='red'
+                        elif self.cinfo.colorCodes[col][self.matrices.xmlInfo[sitename][col][coldate]['COLOR']] == "yellow":
+                            status=self.matrices.xmlInfo[sitename][col][coldate]['Status']
+                            statusu=self.matrices.xmlInfo[sitename][col][coldate]['URL']
+                            statusc='yellow'
+                        elif self.cinfo.colorCodes[col][self.matrices.xmlInfo[sitename][col][coldate]['COLOR']] == "white":
+                            status='n/a'
+                            statusu=' '
+                            statusc='white'
                         else:
                             status='???'
                             statusu='???'
