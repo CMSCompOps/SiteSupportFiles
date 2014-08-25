@@ -40,7 +40,7 @@ class ReadinessMaker:
     #----------------------------------------------------------------------------------------
     #        
     def ParseXML(self):
-        print "\nObtaining XML info from SSB 'commission' view\n"
+        print "\nObtaining XML info from SSB 'Site Readiness' view\n"
         prog = ProgressBar(0, 100, 77)
 
         xmlCacheDir = self.options.path_out + "/INPUTxmls"
@@ -176,16 +176,20 @@ class ReadinessMaker:
                             statusu=self.matrices.xmlInfo[sitename][col][coldate]['URL']
                             statusc='green'
                             if self.matrices.xmlInfo[sitename][col][coldate]['Status']=="pend":
-                                statusc='orange'
                                 status='-'
-                        elif self.cinfo.colorCodes[col][self.matrices.xmlInfo[sitename][col][coldate]['COLOR']] == "white":
-                            statusu=' '
-                            status='n/a'
-                            statusc='white'
+                                statusc='orange'
                         elif self.cinfo.colorCodes[col][self.matrices.xmlInfo[sitename][col][coldate]['COLOR']] == "red":
                             status=self.matrices.xmlInfo[sitename][col][coldate]['Status']
                             statusu=self.matrices.xmlInfo[sitename][col][coldate]['URL']
                             statusc='red'
+                        elif self.cinfo.colorCodes[col][self.matrices.xmlInfo[sitename][col][coldate]['COLOR']] == "yellow":
+                            status=self.matrices.xmlInfo[sitename][col][coldate]['Status']
+                            statusu=self.matrices.xmlInfo[sitename][col][coldate]['URL']
+                            statusc='yellow'
+                        elif self.cinfo.colorCodes[col][self.matrices.xmlInfo[sitename][col][coldate]['COLOR']] == "white":
+                            status='n/a'
+                            statusu=' '
+                            statusc='white'
                         else:
                             status='???'
                             statusu='???'
@@ -393,7 +397,7 @@ class ReadinessMaker:
             status  = ' '
             for day in items:
                 status = 'O' # initial value is OK ('O')
-                for crit in self.GetCriteriasList(sitename): # loop through the columns (criteria) that apply to this site
+                for crit in self.GetCriteriasList(sitename): # loop through the columns (criteria) that apply to this site and affect site status
                     if not self.matrices.columnValues[sitename][day].has_key(crit): # fill columnValues with 'n/a' for any missing values
                         self.matrices.columnValues[sitename][day][crit] = self.nullInfo()
                     if self.matrices.columnValues[sitename][day][crit]['Color'] == 'red': # if any individual metric is red, set status to error ('E')

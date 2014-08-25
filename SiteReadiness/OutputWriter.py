@@ -34,6 +34,8 @@ class OutputWriter:
     # don't write any output for this site?
     def SkipSiteOutput(self, sitename):
         if sitename.find("T0_CH_CERN") == 0 : return 1
+        if sitename.find("T1_CH_CERN") == 0 : return 1
+        if sitename.find("_Buffer") >= 0 : return 1
         if sitename.find("_Disk") >= 0 : return 1
         if sitename.find("T3_") == 0 : return 1
     
@@ -190,9 +192,14 @@ class OutputWriter:
     
                 for metnumber in indmetrics:
     
-                    met=self.cinfo.metorder[metnumber]
-    
-                    if not self.matrices.columnValues[sitename][dates[0]].has_key(met) or met == 'IsSiteInSiteDB': continue # ignore 
+                    met = self.cinfo.metorder[metnumber] #colName
+                    met1 = self.cinfo.printCol[met] #pCol (print permission)
+                    tier = sitename.split("_")[0]   
+                    met2 = self.cinfo.criteria[tier]
+                    
+                    #if not self.matrices.columnValues[sitename][dates[0]].has_key(met) or met == 'IsSiteInSiteDB': continue # ignore 
+                    if not self.matrices.columnValues[sitename][dates[0]].has_key(met) or met1 == '0' : continue # ignore
+                    if met1 == 't' and not met in met2 : continue # ignore    
                     if sitename.find("T1_CH_CERN") == 0 and met == 'T1linksfromT0': continue # ignore 
     
                     if met == 'SAMAvailability':
@@ -340,9 +347,9 @@ class OutputWriter:
                 fileHandle.write("</tr>\n")
                 
                 fileHandle.write("<tr height=15>\n") 
-                mes="\"Scheduled Downtimes\": site maintenances" 
+                mes="\"Maintenance\": Sites scheduled downtimes"
                 fileHandle.write("<td width=" + lw2 + " colspan=2><div id=\"legendexp\">" + mes + "</div></td>\n")
-                mes="\"Job Robot\":" 
+                mes="\"HammerCloud\":"
                 fileHandle.write("<td width=" + lw2 + " colspan=2><div id=\"legendexp\">" + mes + "</div></td>\n")
                 mes="\"Good Links\":" 
                 fileHandle.write("<td width=" + lw2 + " colspan=2><div id=\"legendexp\">" + mes + "</div></td>\n")
@@ -352,9 +359,9 @@ class OutputWriter:
                 fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = Site is not declaring Scheduled-downtime </div></td>\n")
                 fileHandle.write("<td width=" + lw1 + " bgcolor=green><div id=legflag></div></td>\n")
                 if sitename.find('T1_') == 0:
-                    fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = Job success rate is &ge; 90%</div></td>\n")
+                    fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = HC success rate is &ge; 90%</div></td>\n")
                 else:
-                    fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = Job success rate is &ge; 80%</div></td>\n")
+                    fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = HC success rate is &ge; 80%</div></td>\n")
                 fileHandle.write("<td width=" + lw1 + " bgcolor=green><div id=legflag></div></td>\n")
                 fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = at least half of links have 'good' transfers (i.e. with transfer quality > 50%)</div></td>\n")
                 fileHandle.write("</tr>\n")
@@ -363,9 +370,9 @@ class OutputWriter:
                 fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = full-site in SD OR all CMS SE(s) in SD OR all CMS CE(s) in SD</div></td>\n")
                 fileHandle.write("<td width=" + lw1 + " bgcolor=red><div id=legflag></div></td>\n")
                 if sitename.find('T1_') == 0:
-                    fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = Job success rate is < 90%</div></td>\n")
+                    fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = HC success rate is < 90%</div></td>\n")
                 else:
-                    fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = Job success rate is < 80%</div></td>\n")
+                    fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = HC success rate is < 80%</div></td>\n")
                 fileHandle.write("<td width=" + lw1 + " bgcolor=red><div id=legflag></div></td>\n")
                 fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = Otherwise</div></td>\n")
                 fileHandle.write("</tr>\n")
@@ -380,7 +387,7 @@ class OutputWriter:
                 fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = full-site in UD OR all CMS SE(s) in UD OR all CMS CE(s) in UD</div></td>\n")
     
                 fileHandle.write("<td width=" + lw1 + " bgcolor=white><div id=legflag>n/a</div></td>\n")
-                fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = Job success rate is n/a</div></td>\n")
+                fileHandle.write("<td width=" + lw2 + "><div id=\"legend\"> = HC success rate is n/a</div></td>\n")
                 fileHandle.write("</tr>\n")
     
                 fileHandle.write("<tr height=10>\n") 
@@ -733,9 +740,12 @@ class OutputWriter:
             for dat in dates:
                 if self.SkipSiteOutput(sitename): continue
                 for metnumber in indmetrics:
-                    met = self.cinfo.metorder[metnumber]
-                    if not self.matrices.columnValues[sitename][dat].has_key(met) or met == 'IsSiteInSiteDB': continue # ignore 
-    
+                    met = self.cinfo.metorder[metnumber] #colName
+                    met1 = self.cinfo.printCol[met] #pCol (print permission)
+                                        
+                    #if not self.matrices.columnValues[sitename][dat].has_key(met) or met == 'IsSiteInSiteDB': continue # ignore
+                    if not self.matrices.columnValues[sitename][dat].has_key(met) or met1 == '0' : continue # ignore 
+                    
                     if self.matrices.columnValues[sitename][dat][met].has_key('URL'):
                         url = self.matrices.columnValues[sitename][dat][met]['URL']
                     else:

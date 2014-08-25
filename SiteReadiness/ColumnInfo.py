@@ -6,14 +6,15 @@ class ColumnInfo:
         
         self.urls = {}  # SSB URLs Matrix
         self.criteria = {'T0':[],'T1':[],'T2':[],'T3':[]} # which columns to use for which tiers
-        self.colorCodes = {}  # color codes
-        self.metorder = {}            # metric order
-        self.metlegends = {}          # metric legends
-        self.days = 0        # Number of days for which we'll retrieve information from SSB
-        self.daysSC = 0      # Number of previous days on which the current day's readiness depends
-        self.daysToShow = 0  # Number of days to show in html
+        self.colorCodes = {}        # color codes
+        self.metorder = {}          # metric order
+        self.metlegends = {}        # metric legends
+        self.days = 0               # Number of days for which we'll retrieve information from SSB
+        self.daysSC = 0             # Number of previous days on which the current day's readiness depends
+        self.daysToShow = 0         # Number of days to show in html
         self.colors = {}
-        self.creditTransfers = {} # method for transfering credit for metric values between sites (eg to account for disk/tape separation)
+        self.creditTransfers = {}   # method for transfering credit for metric values between sites (eg to account for disk/tape separation)
+        self.printCol = {}          # metric print permission
         
         metricCount = 1
         tmpf = open("data/readiness.conf")
@@ -57,7 +58,9 @@ class ColumnInfo:
                     print 'ERROR! length not two'
                     sys.exit()
                 self.colorCodes[colName].update({pair[0]:pair[1]}) # {index:color}
-        
+            # print permissions
+            pCol = words[5]
+            self.printCol[colName] = pCol
         tmpf.close()
         
         tmpf = open("data/colors.conf")

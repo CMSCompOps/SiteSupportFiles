@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 
-""" @author: Josep Flix (jflix@pic.es) """
+""" @author: Josep Flix / John Artieda """
 
 import sys, xml.dom.minidom, os, datetime, time, pprint
 from xml import xpath
 from datetime import date
+import simplejson as json
 
 # OptParse
 from optparse import OptionParser
 
-
-usage = "usage: (example) %prog -p /home/jflix/tmp2 -u http://lhcweb.pic.es/cms"
+usage = "usage: (example) %prog -p ~/www/SR2 -u http://cms-site-readiness.web.cern.ch/cms-site-readiness"
 parser = OptionParser(usage=usage, version="%prog 1.0")
 parser.add_option("-p", "--path_out", dest="path_out", help="Sets the PATH to store the produced data", metavar="PATH")
 parser.add_option("-u", "--url", dest="url", help="Sets the base URL where produced data is accessible", metavar="URL")
@@ -81,8 +81,8 @@ def ProduceSiteReadinessSSBFile(usable, not_usable, fileSSB, todaystamptofile, d
 			tofile=todaystampfileSSB + '\t' + sitename + '\t' + "not_usable" + '\t' + "red" + '\t' + linkSSB + "\n"
 			fileHandle.write(tofile)
 			
-# URLs with SSB inputs --------------------------------------------------------------------------------------
-
+# SSB inputs (URLs)
+# ------------------
 #webserver_devel="http://dashb-ssb-devel.cern.ch"
 webserver="http://dashb-ssb.cern.ch"
 
@@ -97,37 +97,25 @@ ColumnMatrix['CE_sam']=CE_sam
 ColumnMatrix['SRM_sam']=SRM_sam
 ColumnMatrix['Ranking']=Ranking
 
-# -----------------------------------------------------------------------------------------------------------
+# Read list of sites from SiteDB
+# -------------------------------
+# No need of SiteDB - Script collects info from SR metrics (which already check SiteDB)
+# this script used to check if site is in SiteDB (now lines are commented), if not: omit that site from report (redundant since SR metrics won't report those sites)
+# -------------------------------
+#SiteDB_url="https://cmsweb.cern.ch/sitedb/data/prod/federations-sites"
+#SiteDB_sites=[]
+#fileSiteDB = "sitedb.json"
+#print "Getting the url %s" % SiteDB_url
+#os.system("curl -ks --cert $X509_USER_PROXY --key $X509_USER_PROXY  '%s' > %s" % (SiteDB_url,fileSiteDB))
+#f=open(fileSiteDB,'r')
+#rows=json.loads(f)
+#f.close()
+#os.system("rm '%s'" % (fileSiteDB))
+#for siteName in rows['result']:
+    #SiteDB_sites.append(siteName[3])
 
-SiteDB_url="https://cmsweb.cern.ch/sitedb/reports/showXMLReport?reportid=naming_convention.ini"
-SiteDB_sites=[]
-
-fileSiteDB=pathN+"/sitedb.xml"
-
-print "Getting the url %s" % SiteDB_url
-os.system("curl -ks -H 'Accept: text/xml'  '%s' > %s" % (SiteDB_url,fileSiteDB))
-	
-f=file(fileSiteDB,'r')
-t= xml.dom.minidom.parse(f)
-f.close()
-
-for urls in xpath.Evaluate('/report/result/item', t):
-
-	info={}
-	for target in xpath.Evaluate("cms", urls):
-      		if target.hasChildNodes():
-		      	s=target.firstChild.nodeValue.encode('ascii')
-	       	else:
-	      		s=""
-
-		SiteDB_sites.append(s)
-
-#pprint.pprint(SiteDB_sites)
-
-########################################################
 # Reading data from SSB
-########################################################
-
+# ----------------------
 sites={}
 
 ColumnItems = ColumnMatrix.keys()
@@ -204,7 +192,7 @@ downtime=[]
 for sitename in site:
 	
 	if sitename.find("T3_") == 0 or sitename.find("T0_") == 0 or sitename.find("T1_") == 0: continue
-       	if not sitename in SiteDB_sites: continue
+        #if not sitename in SiteDB_sites: continue
        	if sitename.find("T2_CH_CAF") == 0 or sitename.find("T2_PT_LIP_Coimbra") == 0: continue
 
 	useit=1
@@ -258,8 +246,8 @@ for sitename in site:
 		if not not_usable.has_key(sitename): not_usable[sitename]=0
 
 
-############################################################
-		
+# Output file
+# ------------
 fileHandle.write("---------- USABLE SITES FOR ANALYSIS ---------- \n\n")
 
 siteus = usable.keys()
@@ -276,8 +264,6 @@ for sitename in sitenous:
 	if sitename in downtime: fileHandle.write(sitename+" (SD)\n")
 	else: fileHandle.write(sitename+"\n")
 
-############################################################
-
 totalsites=len(usable)+len(not_usable)
 
 fileHandle.write("\n--------- Statistics ---------- \n\n")
@@ -288,13 +274,13 @@ fileHandle.write("\n--------- Detailed Site Status ---------- \n\n")
 for sitename in sites:
 	
 	if sitename.find("T3_") == 0 or sitename.find("T0_") == 0 or sitename.find("T1_") == 0: continue
-       	if not sitename in SiteDB_sites:
-#     		fileHandle.write("Site is not on SiteDB\n\n")
-		continue
+        #if not sitename in SiteDB_sites:
+            #fileHandle.write("Site is not on SiteDB\n\n")
+            #continue
        	if sitename.find("T2_CH_CAF") == 0 or sitename.find("T2_PT_LIP_Coimbra") == 0:
-#		fileHandle.write("Site shall be skipped\n\n")
-		continue
-	
+       		fileHandle.write("Site shall be skipped\n\n")
+       		continue
+       	
 	for col in ColumnMatrix:
 
 		if not sites[sitename].has_key(col):

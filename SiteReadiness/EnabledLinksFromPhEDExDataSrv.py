@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
-""" @author: Josep Flix (jflix@pic.es) """
+""" @author: Josep Flix / John Artieda """
 
 import xml.dom.minidom, os, time
 from xml import xpath
 import re, datetime, string, sys, pprint
 from optparse import OptionParser
 
-usage = "usage: (example) %prog -p /home/jflix/tmp2 -u http://lhcweb.pic.es/cms"
+usage = "usage: (example) %prog -p ~/www/SR2 -u http://cms-site-readiness.web.cern.ch/cms-site-readiness"
 parser = OptionParser(usage=usage, version="%prog 1.0")
 parser.add_option("-p", "--path_out", dest="path_out", help="Sets the PATH to store the produced data", metavar="PATH")
 parser.add_option("-u", "--url", dest="url", help="Sets the base URL where produced data is accessible", metavar="URL")
@@ -27,7 +27,21 @@ def getTierNumber(name):
 def Buff2CMS(unicode_buffer):
 	buffer=str(unicode_buffer)
 	name=buffer
+	i=string.find(buffer,"_MSS")
+	if i>0:
+		name=buffer[0:i]
+	i=string.find(buffer,"_Export")
+	if i>0:
+		name=buffer[0:i]
+	return name
+
+def Buff2CMS2(unicode_buffer):
+	buffer=str(unicode_buffer)
+	name=buffer
 	i=string.find(buffer,"_Buffer")
+	if i>0:
+		name=buffer[0:i]
+	i=string.find(buffer,"_Disk")
 	if i>0:
 		name=buffer[0:i]
 	i=string.find(buffer,"_MSS")
@@ -41,16 +55,15 @@ def Buff2CMS(unicode_buffer):
 def TierExceptions(name):
 	i=0
 	if name=="": i=1
+	if name=="T1_CH_CERN": i=1
+	if name=="T1_CH_CERN_Buffer": i=1
 	if name=="T2_CH_CAF": i=1
 	if name=="T1_RAL_Stage": i=1
 	if name=="T1_DE_FZK": i=1
-	if name=="T1_ES_PIC_Disk": i=1
-	if name=="T1_IT_CNAF_Disk": i=1
 	if name=="T2_RU_IHEP_Disk": i=1
 	if name=="T2_KIPT": i=1
 	if name=="T2_CUKUROVA": i=1
 	if name[0:2]=="XT": i=1
-	if name=="T1_UK_RAL_Disk": i=1
 	return i
 
 today=datetime.datetime.utcnow()
@@ -136,15 +149,29 @@ for url in xpath.Evaluate('/phedex/link', t):
 		sites[sourceName]={'upT0':[], 'downT0':[],'upT1':[], 'downT1':[], 'upT2':[], 'downT2':[]}
 
 	value=url.getAttribute("status")
-
 	if (value != "deactivated" ):
 		if not sites.has_key(targetName):
 			sites[targetName]={'upT0':[], 'downT0':[],'upT1':[], 'downT1':[], 'upT2':[], 'downT2':[]}
+			
 		uplink='upT%s' % targetTier
 		downlink='downT%s' % sourceTier
 		sites[sourceName][uplink].append(targetName)
 		sites[targetName][downlink].append(sourceName)
 
+	if sourceTier=="1" :
+		sourceName2=Buff2CMS2(source) # if site has _Buffer or _Disk also creates site name T1_XX_YYY
+		if not sites.has_key(sourceName2):
+			sites[sourceName2]={'upT0':[], 'downT0':[],'upT1':[], 'downT1':[], 'upT2':[], 'downT2':[]}
+		if (value != "deactivated" ):
+			sites[sourceName2][uplink].append(targetName) # T1_XX_YYY adds _Buffer and _Disk links
+		
+	if targetTier=="1" :
+		targetName2=Buff2CMS2(target) # if site has _Buffer or _Disk also creates site name T1_XX_YYY
+		if (value != "deactivated" ):
+			if not sites.has_key(targetName2):
+				sites[targetName2]={'upT0':[], 'downT0':[],'upT1':[], 'downT1':[], 'upT2':[], 'downT2':[]}
+			sites[targetName2][downlink].append(sourceName) # T1_XX_YYY adds _Buffer or _Disk links
+		
 # Build txt feed to SSB
 
 keys=sites.keys()
@@ -168,24 +195,29 @@ for i in range(0,len(keys)):
 		siteStatus2[site]=toT2
 		ss3="%i(d)-%i(u)" % (fromT1,toT1) 
 		siteStatus3[site]=ss3
-
+		siteStatus4[site]="n/a"
+		siteStatus5[site]="n/a"
+		
+		site2=Buff2CMS2(site) # if name has _Buffer or _Disk --> create site name T1_XX_YYY
+			
+		siteColor1[site]="green"
+		siteColor2[site]="green"
+		siteColor3[site]="green"
+		siteColor1[site2]="green"
+		siteColor2[site2]="green"
+		siteColor3[site2]="green"
+			
 		if fromT0<T1downlinkT0:
 			siteColor1[site]="red"
-		else:
-			siteColor1[site]="green"	
-		
+			siteColor1[site2]="red" # if either Buffer or Disk are red, site should be red
+			
 		if toT2<T1uplinksT2s:
 			siteColor2[site]="red"
-		else:
-			siteColor2[site]="green"
+			siteColor2[site2]="red" # if either Buffer or Disk are red, site should be red
 
 		if toT1<T1downlinksuplinksT1s or fromT1<T1downlinksuplinksT1s:
 			siteColor3[site]="red"
-		else:
-			siteColor3[site]="green"	
-		
-		siteStatus4[site]="n/a"
-		siteStatus5[site]="n/a"
+			siteColor3[site2]="red"	# if either Buffer or Disk are red, site should be red
 		
 	if isT2:
 
@@ -206,13 +238,15 @@ for i in range(0,len(keys)):
 		else:
 			siteColor5[site]="green"
 
-# Think how to manage CERN T0/T1
-
-	if site=="T1_CH_CERN":
-		siteStatus1[site]="n/a"
-		siteStatus4[site]="n/a"
-		siteStatus5[site]="n/a"
-
+# Think how to manage CERN T0
+    # T1:
+    	# siteStatus1[site]=fromT0
+     	# siteStatus2[site]=toT2
+      	# ss3="%i(d)-%i(u)" % (fromT1,toT1)
+       	# siteStatus3[site]=ss3
+    # T2:
+    	# siteStatus4[site]=toT1
+     	# siteStatus5[site]=fromT1
 	if site=="T0_CH_CERN":
 		siteStatus1[site]="n/a"
 		siteStatus2[site]="n/a"
@@ -340,6 +374,7 @@ availableT2 = {}
 for i in range(0,len(keys)):
 	site=keys[i]
 	if site[1]=="1":
+		if "_Buffer" not in site and "_Disk" not in site: continue
 		if not availableT1.has_key(site):
 			availableT1[site]={}
 	elif site[1]=="2":
@@ -418,7 +453,7 @@ for j in range(0,3):
 	for i in range(0,len(keyst1)):
 		site=keyst1[i]
 		if site[1]!="1": continue
-		if site=="T1_CH_CERN": continue
+		#if "T1_CH_CERN" in site: continue
 		fromT0=len(sites[site]["downT0"])
 		if j==1:
 			if siteColor1[site]=="green":
