@@ -23,8 +23,8 @@ echo "*** SiteReadiness.py ***"
 # $link: address to use inside files for output links
 
 # Usable sites for analysis
-echo "*** UsableSites.py ***"
-python UsableSites.py -p $webdir -u $link
+#echo "*** UsableSites.py ***"
+#python UsableSites.py -p $webdir -u $link
 
 # copy all output files to web location
 cp -a $webdir/. $webofficial/
