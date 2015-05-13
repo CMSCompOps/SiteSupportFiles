@@ -28,8 +28,8 @@ scp ~/bin/Certificate/publiccert.pem lxplus.cern.ch:.globus/usercert.pem\
 \
 \ul from lxplus or cmspc\ulnone \
 dar permisos:\
-chmod 400 userkey.pem --> owner read only\
-chmod 600 usercert.pem --> owner R&W\
+chmod 400 .globus/userkey.pem --> owner read only\
+chmod 600 .globus/usercert.pem --> owner R&W\
 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
 
@@ -38,20 +38,23 @@ chmod 600 usercert.pem --> owner R&W\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
 \cf0 \ul lxplus\ulnone \
 source /afs/cern.ch/cms/LCG/LCG-2/UI/cms_ui_env.sh\
-\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
-\cf0 voms-proxy-init -voms cms\
+voms-proxy-init -voms cms\
 Enter GRID pass phrase: [clave con la que encript\'e9 mi PrivateKey]\
+\pard\tx529\pardeftab529\pardirnatural
+\cf0 X509_USER_PROXY=/tmp/x509up_u47967; export X509_USER_PROXY\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
-\cf0 \
-or \
+\cf0 or \
 (works better 
 \f1\fs26 in scl6 nodes
 \f0\fs24 )\
 source /afs/cern.ch/project/gd/LCG-share/3.2.11-1/etc/profile.d/grid-env.sh\
 voms-proxy-init -voms cms\
 Enter GRID pass phrase: [clave con la que encript\'e9 mi PrivateKey]\
+\pard\tx529\pardeftab529\pardirnatural
+\cf0 X509_USER_PROXY=/tmp/x509up_u47967; export X509_USER_PROXY\
 \
-\ul cmslpc\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+\cf0 \ul cmslpc\
 \pard\pardeftab720
 \cf0 \ulnone source /uscmst1/prod/grid/gLite_SL5.sh\
 voms-proxy-init -voms cms\
